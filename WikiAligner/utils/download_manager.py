@@ -1,15 +1,12 @@
 import requests
 import wikipedia
 
+#TODO: change all URLs and parameters to the api to CAPITAL and save them in setting.py
+
 
 class DownloadManager:
     def __init__(self) -> None:
         pass
-
-    def get_query(self):
-        print('=' * 5, 'The keyword you\'d like to search:', '=' * 5)
-        query = input() or None
-        return query
 
     def search_available_keyword_options(self, query: str = '') -> 'list[str]':
         """Search all Wiki titles related to the keyword, and let user determine which specific title.
@@ -66,60 +63,6 @@ class DownloadManager:
         options.insert(0, eng_option)
         return options
 
-########################
-
-    def print_options(self, options, prompt):
-        """Print options as (<index>)......<option>
-        """
-        if prompt:
-            print(prompt)
-        for idx, option in enumerate(options):
-            print(f'({idx + 1})......{option}')
-
-    def print_keyword_options(self, options):
-        for idx, kw in enumerate(options):
-            print(idx + 1, kw)
-
-    def print_options2(self, options) -> None:
-        """
-        options[i][0]: language code
-        options[i][1]: Wiki title
-        options[i][2]: URL to the Wiki page
-        """
-        print('=' * 5, "Available language codes and their Wiki titles",
-              '=' * 5)
-        for idx, option in enumerate(options):
-            print(f'{idx+1}.{option[0]}    {option[1]}')
-
-#########################
-
-    def get_option_choice(self, options, prompt: str = ''):
-        if prompt:
-            print(prompt)
-        option_idx = int(input()) - 1
-        return options[option_idx]
-
-    def get_keyword_option(self, options) -> str:
-        kw_idx = int(
-            input(
-                "Choose the index of your Wiki keyword from those related ones:"
-            )) - 1
-        keyword = options[kw_idx]
-        return keyword
-
-    def get_option_choice2(self, options) -> 'tuple[str, str, str]':
-        """
-        options[i][0]: language code
-        options[i][1]: Wiki title
-        options[i][2]: URL to the Wiki page
-        """
-        print('=' * 5, "Your choice: ", '=' * 5)
-        idx = int(input()) - 1
-        return options[idx]
-
-
-#############################
-
     def download_text(self,
                       title: str = '',
                       languageCode: str = 'en') -> 'str':
@@ -128,6 +71,7 @@ class DownloadManager:
         For more on the api @https://www.mediawiki.org/w/api.php?action=help&modules=main
         """
         # url = f'https://{languageCode}.wikipedia.org/w/api.php?action=query&prop=extracts&exlimit=1&utf8=1&titles={title}&explaintext=1&formatversion=2&format=json'
+        #TODO: parse api (action)
         url = f'https://{languageCode}.wikipedia.org/w/api.php'
         params = {
             'action': 'query',
