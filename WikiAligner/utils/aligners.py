@@ -2,12 +2,33 @@ import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
 import faiss
 
-from _decorators import timer
+from utils._decorators import timer
 
 
 class Aligners:
+    def __init__(self, embedding1, embedding2) -> None:
+        self.embedding1 = embedding1
+        self.embedding2 = embedding2
+
+    def align_auto(self, method='sklearn'):
+        if method == 'sklearn':
+            by_row = True if input(
+                'Align by row? T/F').upper() == 'T' else False
+            return self.align_with_sklearn(self.embedding1, self.embedding2,
+                                           by_row)
+        elif method == 'faiss':
+            from_eb1 = True if input(
+                'Align from embedding1\'s perspective? T/F').upper(
+                ) == 'T' else False
+            return self.align_with_faiss(self.embedding1,
+                                         self.embedding2,
+                                         from_eb1=from_eb1)
+        else:
+            return 'Align method can\'t be applied. Feel free to give us suggestions via https://github.com/LukeTu/WikiAligner'
+
     # @timer
-    def align_with_sklearn(embedding1: np.ndarray,
+    def align_with_sklearn(self,
+                           embedding1: np.ndarray,
                            embedding2: np.ndarray,
                            by_row=True):
         """Calculate a cosine similarity matrix of sentence embeddings from 2 documents with sklearn, and return the largest element from every line/column of a matrx.
@@ -39,9 +60,9 @@ class Aligners:
                 yield maxRowIdx, colIdx, matrix[maxRowIdx][colIdx]
 
     # @timer
-    def align_with_faiss(embedding1, embedding2, dim=768, from_eb1=True):
+    def align_with_faiss(self, embedding1, embedding2, dim=768, from_eb1=True):
         """
-        : dim : int, dimension of embedding vectors. Uses LaBSE's default dimension (768) as default.
+        : dim : int, dimension of embedding vectors. Uses LaBSE's (the sentence embedding tool) default dimension (768) as default.
         
         : from_eb1 : boolean, whether from embedding1's perspective. Note that, from eb1's perspective, eb1_sentence1 may be similar with eb2_sentence2 the most, while from eb2's perspective, eb2_sentence2 may be similar with eb1_sentence3 the most.
         """
