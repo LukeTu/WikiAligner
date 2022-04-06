@@ -1,0 +1,79 @@
+<html>
+  <head>
+    <title>WikiAligner Demo</title>
+  </head>
+  <!--引入jQuery包用于使用ajax-->
+  <script
+    type="text/javascript"
+    src="http://apps.bdimg.com/libs/jquery/2.1.4/jquery.min.js"
+  ></script>
+
+  <body>
+    <h1>WikiAligner Demo</h1>
+
+    <input
+      type="text"
+      id="wiki_title"
+      name="wiki_title"
+      placeholder="e.g. Steve Jobs"
+    /><br />
+    <button onclick="submit_wiki_title();">Submit Wiki Title</button><br />
+
+    <input
+      type="text"
+      id="language1"
+      name="language1"
+      placeholder="e.g. en"
+    /><br />
+    <input
+      type="text"
+      id="language2"
+      name="language2"
+      placeholder="e.g. zh"
+    /><br />
+    <!--创建button按钮，点击则激发submit()事件-->
+    <button onclick="submit_language_code();">Go</button><br />
+  </body>
+  <script>
+    function submit_wiki_title() {
+      $.ajax({
+        url: "submit_wiki_title" /*数据提交到submit处*/,
+        type: "POST" /*采用POST方法提交*/,
+        data: {
+          wiki_title: $("#wiki_title").val(),
+        },
+        success: function (result) {
+          if (result.message == "success!") {
+            alert("Wiki Title: " + result.wiki_title + "\n");
+          } else {
+            alert(result.message);
+          }
+        },
+      });
+    }
+
+    function submit_language_code() {
+      $.ajax({
+        url: "submit_language_code" /*数据提交到submit处*/,
+        type: "POST" /*采用POST方法提交*/,
+        data: {
+          language1: $("#language1").val(),
+          language2: $("#language2").val(),
+        },
+        success: function (result) {
+          if (result.message == "success!") {
+            alert(
+              "Language1: " +
+                result.language1 +
+                "\n" +
+                "Language2: " +
+                result.language2
+            );
+          } else {
+            alert(result.message);
+          }
+        },
+      });
+    }
+  </script>
+</html>
