@@ -1,20 +1,23 @@
+import os
 import requests
 import wikipedia
 
 #TODO: change all URLs and parameters to the api to CAPITAL and save them in setting.py
 
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# BASE_DIR: WikiTrans base directory.
+
 
 class DownloadManager:
-    def __init__(self) -> None:
-        pass
+    def __init__(self, debug_mode=False) -> None:
+        self.data_path = os.path.join(BASE_DIR, 'data')
+        self.debug_mode = debug_mode
 
-    def search_available_keyword_options(self, query: str = '') -> 'list[str]':
-        """Search all Wiki titles related to the keyword, and let user determine which specific title.
-        : query : the word for furry search in English.
-        For more information, please refer to the wikipedia documentation: https://wikipedia.readthedocs.io/en/latest/code.html#api
-        """
-        #TODO: expand this function more languages.
-        return wikipedia.search(query=query, results=20)
+    def get_query(self, prompt):
+        if prompt:
+            print(prompt)
+        query = input() or None
+        return query
 
     def get_langcode_title_options(
             self,
@@ -42,24 +45,31 @@ class DownloadManager:
         }
         jsonText = requests.Session().get(url=endpoint, params=params).json()
 
+        if self.debug_mode: append_links = True
+
         if not append_links:
             options = [(lang_dict['lang'], lang_dict['*'])
                        for lang_dict in list(
                            jsonText['query']['pages'].values())[0]['langlinks']
                        ]
+            eng_option = (
+                'en',
+                keyword,
+            )
+
         else:
             options = [(lang_dict['lang'], lang_dict['*'], lang_dict['url'])
                        for lang_dict in list(
                            jsonText['query']['pages'].values())[0]['langlinks']
                        ]
+            eng_option = (
+                'en', keyword,
+                f'https://en.wikipedia.org/wiki/{keyword.replace(" ","_")}')
         # lang_dict['lang']: language code
         # lang_dict['*']: Wiki title
         # lang_dict['url']: URL to the Wiki page
 
-        # The endpoint above doesn't return 'en'(English) option, so we have to insert it additionally.
-        eng_option = (
-            'en', keyword,
-            f'https://en.wikipedia.org/wiki/{keyword.replace(" ","_")}')
+        # The <endpoint> above doesn't return 'en'(English) option, so we have to insert it additionally.
         options.insert(0, eng_option)
         return options
 
@@ -72,6 +82,9 @@ class DownloadManager:
         """
         # url = f'https://{languageCode}.wikipedia.org/w/api.php?action=query&prop=extracts&exlimit=1&utf8=1&titles={title}&explaintext=1&formatversion=2&format=json'
         #TODO: parse api (action)
+        #TODO: where is simplified Chinese? 可能 wiki_title是史蒂夫·賈伯斯，而非史蒂夫·乔布斯。两者url其余部分一致。
+        #并不是，本身是简体的。zh ⋅⋅⋅⋅ 史蒂夫·乔布斯 ⋅⋅⋅⋅ https://zh.wikipedia.org/wiki/%E5%8F%B2%E8%92%82%E5%A4%AB%C2%B7%E4%B9%94%E5%B8%83%E6%96%AF
+        # 可能是api的问题？api是否会默认设置地区？
         url = f'https://{languageCode}.wikipedia.org/w/api.php'
         params = {
             'action': 'query',
@@ -88,7 +101,9 @@ class DownloadManager:
 
     def save_text(self, text: str, wiki_title: str,
                   language_code: str) -> None:
-        filepath = f'{wiki_title}_{language_code}.txt'
+        filepath = os.path.join(self.data_path,
+                                f'{wiki_title}_{language_code}.txt')
         with open(filepath, 'w', encoding='utf-8') as f:
             f.writelines(text)
-        return f'Text saved at {filepath}'
+        print(f'Text saved at {filepath}')
+        return filepath
