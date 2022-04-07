@@ -1,4 +1,6 @@
 # WikiAligner
+Try [this file](https://github.com/LukeTu/WikiAligner/blob/main/WikiAligner/requirements2.txt) if requirements installation failed. For installing faiss, please refer to [its document](https://github.com/facebookresearch/faiss/blob/main/INSTALL.md).
+
 - 2022-04-06
   #### Milestone
   1. Finished CLI after refactoring code.
