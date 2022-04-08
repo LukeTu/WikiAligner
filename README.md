@@ -1,10 +1,10 @@
 # WikiAligner
 Try [this file](https://github.com/LukeTu/WikiAligner/blob/main/WikiAligner/requirements2.txt) if requirements installation failed. For installing faiss, please refer to [its document](https://github.com/facebookresearch/faiss/blob/main/INSTALL.md).
-```
+```shell
 # Install faiss CPU version
-conda install -c pytorch faiss-cpu
+$ conda install -c pytorch faiss-cpu
 # Install faiss GPU+CPU version
-conda install -c conda-forge faiss-gpu
+$ conda install -c conda-forge faiss-gpu
 ```
 While according to faiss document, the GPU version is not available other than Linux, so that here we tested with the CPU version.
 
