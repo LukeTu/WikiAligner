@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Wikipedia Project-HKBU</title>
+    <link rel="shortcut icon" href="favicon.ico" type="image/x-icon"/>
+    <!-- 引入样式 -->
+    <!--    <link href="https://cdn.bootcdn.net/ajax/libs/element-plus/1.0.2-beta.65/theme-chalk/index.css" rel="stylesheet">-->
+    <!--    &lt;!&ndash; 引入组件库 &ndash;&gt;-->
+    <!--    <script src="https://unpkg.com/vue@next"></script>-->
+    <!--    <script src="https://cdn.bootcdn.net/ajax/libs/element-plus/1.0.2-beta.65/index.full.js"></script>-->
+    <!--    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>-->
+    <!-- 引入样式 -->
+    <link href="src/css/index.css" rel="stylesheet">
+    <link href="src/element-plus/1.0.2-beta.65/theme-chalk/index.css" rel="stylesheet">
+    <!-- 引入组件库 -->
+    <script src="src/vue@3.2.20/dist/vue.global.js"></script>
+    <script src="src/element-plus/1.0.2-beta.65/index.full.js"></script>
+    <script src="src/axios/dist/axios.min.js"></script>
+</head>
+<body>
+<div id="app">
+    <el-header>
+        <div>
+            <el-row :gutter="20">
+                <el-col :span="4">
+                    <div class="grid-content bg-purple">
+                        <!--                        维基百科logo-->
+                        <a href="#" target="_self"><img src="https://www.hkbu.edu.hk/eng/images/logo.png"
+                                                        alt="hkbu"></a>
+                    </div>
+                </el-col>
+                <el-col :span="8">
+                </el-col>
+
+            </el-row>
+
+            <el-row :gutter="8">
+                <el-col :span="2">
+
+                    <div class="grid-content bg-purple" style="padding-right: 15px">
+                        <el-slider :max=maxSim :min=minSim v-model="value1" :step="0.01" show-stops></el-slider>
+                    </div>
+                </el-col>
+
+                <el-col :span="2">
+                    <el-input v-model="ruleForm.keyword" placeholder="key words"></el-input>
+                </el-col>
+                <el-col :span="1">
+                    <el-select v-model="ruleForm.language1" placeholder="language1" style="width: 65px">
+                        <el-option label="en" value="en" selected="selected"></el-option>
+                        <el-option label="zh" value="zh"></el-option>
+                        <el-option label="ru" value="ru"></el-option>
+                    </el-select>
+                </el-col>
+
+                <el-col :span="2">
+                    <el-input v-model="ruleForm.PageID1" placeholder="PageID"></el-input>
+                </el-col>
+
+                <el-col :span="1">
+                    <el-select v-model="ruleForm.language2" placeholder="language2" style="width: 65px">
+                        <el-option label="en" value="en" selected="selected"></el-option>
+                        <el-option label="zh" value="zh"></el-option>
+                        <el-option label="ru" value="ru"></el-option>
+                    </el-select>
+                </el-col>
+
+                <el-col :span="2">
+                    <el-input v-model="ruleForm.PageID2" placeholder="PageID"></el-input>
+                </el-col>
+
+                <el-col :span="2">
+                    <el-button type="primary" @click="submitForm('ruleForm')" plain>Submit</el-button>
+                </el-col>
+
+
+                <el-col :span="8">
+                    <i style="float: right" :class="{'bg-blue':showAllData}" class="el-icon-data-line"
+                       @click="showAll"></i>
+                    <span style="float: right;vertical-align: middle;margin-right: 20px;margin-top: 4px;">{{'similarly: ' + simLisValue}}</span>
+
+                </el-col>
+            </el-row>
+        </div>
+    </el-header>
+    <!--        查找面板-->
+    <el-main>
+        <el-row class="main">
+            <el-col :span="12">
+                <div class="box-title">{{Text1}}</div>
+                <div id="text1" class="grid-content bg-purple box-text" ref="text1" @scroll="sysHandleScroll()"
+                     @mouseover="changeFlag(false)">
+
+                    <span v-for="(items,index) in fa_data.en" @contextmenu.prevent="getTranlate('left',$event)">
+                        <div v-if="items.content=='<br>' ">
+                            <br>
+                            <br>
+                        </div>
+                     <p v-else-if="items.content.substr(-2,2)=='=='"><b class="bg-orange">{{ items.content}}</b></p>
+                     <b class="bg-orange" v-else-if=items.pair_id===-1>{{ items.content}}</b>
+                     <b class="bg-orange" v-else-if="items.sim<value1 && items.sim>0 ">{{items.content}}</b>
+                     <b @click="doCopy($event,'left')" :class="{'bg-demo':showAllData}" :sim="items.sim"
+                        :pair_id="items.pair_id"
+                        v-else :items.pair_id!=-1 onmouseover="mouseover(this)"
+                        onmouseleave="mouseLeave(this)">{{items.content}}<b class="num_tag" v-show="showAllData">{{items.pair_id}}</b></b>
+                    </span>
+                </div>
+            </el-col>
+            <el-col :span="12">
+                <div class="box-title">{{Text2}}</div>
+                <div id="text2" class="grid-content bg-purple-light box-text" ref="text2" @scroll="exterHandleScroll()"
+                     @mouseover="changeFlag(true)">
+                   <span v-for="items in fa_data.zh" @contextmenu.prevent="getTranlate('right',$event)">
+                      <div v-if="items.content=='<br>' ">
+                            <br>
+                            <br>
+                        </div>
+                      <p v-else-if="items.content.substr(-2,2)=='=='"><b class="bg-orange">{{ items.content}}</b></p>
+                     <b class="bg-orange" v-else-if=items.pair_id===-1>{{ items.content}}</b>
+                     <b class="bg-orange" v-else-if=items.sim<value1>{{items.content}}</b>
+                     <b @click="doCopy($event,'right')" :class="{'bg-demo':showAllData}" :sim="items.sim"
+                        :pair_id="items.pair_id"
+                        v-else :items.pair_id!=-1 onmouseover="mouseover(this)"
+                        onmouseleave="mouseLeave(this)">{{items.content}}<b class="num_tag" v-show="showAllData">{{items.pair_id}}</b></b>
+                    </span>
+                </div>
+            </el-col>
+        </el-row>
+    </el-main>
+
+    <!--<el-button type="primary" style="margin-left: 16px" @click="drawer = true">-->
+    <!--    open-->
+    <!--</el-button>-->
+
+    <el-drawer v-model="drawer" title="I'm outer Drawer" size="50%">
+        <div>
+            <p>22</p>
+        </div>
+    </el-drawer>
+    <el-footer>
+        <p>Copyright © 2021 Centre for Translation, HKBU</p>
+        <p>Disclaimer | Privacy Statement</p>
+    </el-footer>
+</div>
+</body>
+<script src="src/devicePixelRatio/index.js"></script>
+<script src="src/md5/index.js"></script>
+<script>
+    var Main = {};
+    const app = Vue.createApp({
+        data() {
+            return {
+                temp: 0,
+                drawer:false,
+                Text1: 'Text1',
+                Text2: 'Text2',
+                maxSim:10,
+                minSim:0,
+                flag: true,
+                simLisValue: 0,
+                value1: 0,
+                showAllData: false,
+                fa_data: [],
+                simListOn: {},
+                simListOff: {},
+                translatedLanguage: '',
+                ruleForm: {
+                    keyword: 'steve jobs',
+                    language1: 'en',
+                    language2: 'zh'
+                },
+                rules: {
+                    keyword: [
+                        {required: true, message: 'please input keywords', trigger: 'blur'},
+                    ],
+                    language1: [
+                        {required: true, message: 'please select', trigger: 'blur'},
+                    ],
+                    language2: [
+                        {required: true, message: 'please select', trigger: 'blur'},
+                    ],
+                }
+            }
+        },
+        created() {
+            window.mouseover = this.mouseover;
+            window.mouseLeave = this.mouseLeave;
+            // new DevicePixelRatio().init();
+        },
+        methods: {
+            submitForm(formName) {
+                let path = '3.json';
+                if (this.ruleForm.keyword.toLowerCase().indexOf("jobs") !== -1) {
+                    path = '3.json';
+                }
+                axios.get(path).then(response => {
+                        let keys = Object.keys(response.data.result)
+                        this.fa_data = response.data.result;
+                        this.Text1 = keys[2];
+                        this.Text2 = keys[3];
+                        this.maxSim = response.data.result.maxSim;
+                        this.minSim = response.data.result.minSim;
+                        // for (let items in this.fa_data['similarity']) {
+                        //     this.simListOn[this.fa_data['similarity'][items].id_zh] = this.fa_data['similarity'][items]
+                        //     this.simListOff[this.fa_data['similarity'][items].id_en] = this.fa_data['similarity'][items]
+                        // }
+                    }
+                )
+
+
+            },
+            getTranlate(type, event) {
+                let salt = 'demo'
+                let q = event.target.firstChild.textContent
+                let from = type === 'left' ? this.ruleForm.language1 : this.ruleForm.language2
+                let to = type === 'left' ? this.ruleForm.language2 : this.ruleForm.language1
+
+
+                let sign = md5(`20210620000867906${q}${salt}0NNfT6b27iPaMVw9hAgp`)
+                let appid = `20210620000867906`
+
+                let data = {"q": q, "from": from, "to": to, "appid": '20210620000867906', "salt": salt, "sign": sign};
+                axios.post(`/api/trans/vip/translate?q=${q}&from=${from}&to=${to}&appid=${appid}&salt=${salt}&sign=${sign}`, data, {headers: {'Content-Type': 'application/x-www-form-urlencoded'}}).then((res) => {
+                    this.translatedLanguage = res.data.trans_result[0].dst
+
+                    this.$notify({
+                        title: 'Translated',
+                        message: this.translatedLanguage,
+                        duration: 6000
+                    });
+                })
+            },
+            showAll() {
+                this.showAllData = !this.showAllData;
+            },
+            mouseover(e) {
+
+                let pair_id = e.getAttribute('pair_id').toString();
+                this.simLisValue = e.getAttribute('sim').toString();
+                document.querySelectorAll('[pair_id="' + pair_id + '"]').forEach(function (item) {
+                    item.classList.add("bg_blue")
+                })
+            },
+            mouseLeave(e) {
+                document.querySelectorAll('b').forEach(function (item) {
+                    item.classList.remove("bg_blue");
+                })
+                this.simLisValue = 0
+            },
+            doCopy(e, type) {
+
+                if (type === 'left') {
+                    let pair_id = e.target.getAttribute('pair_id').toString()
+                    let cc = document.querySelectorAll('[pair_id="' + pair_id + '"]')
+                    console.log('text1_id', 'zh', cc[1].getBoundingClientRect(), cc[1].offsetTop)
+                    console.log('text2_id', 'en', cc[0].getBoundingClientRect(), cc[0].offsetTop)
+
+                    this.$refs.text2.scrollTop = cc[1].offsetTop - 60
+
+                } else {
+                    console.log('right')
+                    let pair_id = e.target.getAttribute('pair_id').toString()
+                    let cc = document.querySelectorAll('[pair_id="' + pair_id + '"]')
+                    this.$refs.text1.scrollTop = cc[0].offsetTop - 60
+                }
+
+            },
+            // 左右滚动条滚动同步
+            changeFlag(flag) {
+                this.flag = flag
+            },
+            sysHandleScroll() {
+
+                // if (!this.flag) {
+                //     // console.log('text1', this.$refs.text1.scrollTop)
+                //     this.$refs.text2.scrollTop = (this.$refs.text1.scrollTop / this.$refs.text1.scrollHeight) * this.$refs.text2.scrollHeight
+                // }
+            },
+            exterHandleScroll() {
+                // console.log('text2', this.$refs.text2.scrollTop)
+                // if (this.flag) {
+                //     this.$refs.text1.scrollTop = (this.$refs.text2.scrollTop / this.$refs.text2.scrollHeight) * this.$refs.text1.scrollHeight
+                // }
+            },
+        },
+        mounted() {
+            this.submitForm()
+        }
+    });
+    app.use(ElementPlus);
+    app.mount("#app");
+</script>
+</html>
