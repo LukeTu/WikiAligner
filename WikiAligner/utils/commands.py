@@ -2,12 +2,20 @@ import wikipedia
 
 from download_manager import DownloadManager
 
-_prompt_query = '=' * 5 + 'The keyword you\'d like to search:' + '=' * 5
-_prompt_wiki_title_options = '=' * 5 + 'Available language codes and their Wiki titles' + '=' * 5
-_prompt_choose_keyword = 'Choose the index of your Wiki keyword from those related ones:'
+# _prompt_query = '=' * 5 + 'The keyword you\'d like to search:' + '=' * 5
+# _prompt_wiki_title_options = '=' * 5 + 'Available language codes and their Wiki titles' + '=' * 5
+# _prompt_choose_keyword = 'Choose the index of your Wiki keyword from those related ones:'
 
 
 class DownloadCommand:
+    def __init__(self, ) -> None:
+        pass
+
+
+# prompt_query=_prompt_query,
+#                  prompt_wiki_title_options=_prompt_wiki_title_options,
+#                  prompt_choose_keyword=_prompt_choose_keyword
+
     def _get_query(self, prompt):
         if prompt:
             print(prompt)
