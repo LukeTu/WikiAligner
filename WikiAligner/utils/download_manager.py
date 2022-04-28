@@ -1,6 +1,6 @@
 import os
+from typing import Union
 import requests
-import wikipedia
 
 #TODO: change all URLs and parameters to the api to CAPITAL and save them in setting.py
 
@@ -17,24 +17,23 @@ class DownloadManager:
 
         self.debug_mode = debug_mode
 
-    def get_query(self, prompt):
+    def get_query(self, prompt: 'str' = ''):
         if prompt:
             print(prompt)
         query = input() or None
         return query
 
     def get_langcode_title_options(
-            self,
-            keyword: str = '',
-            append_links=False) -> 'list[tuple[str,str,str]]':
+        self,
+        keyword: 'str' = '',
+    ) -> Union['list[tuple[str, str]]', 'list[tuple[str, str, str]]']:
         """Search and return available (language code, Wiki title, link) options.
 
-        : append_links : if user want to return the URL of the Wiki page.
-
-        Return :
+        Return
+        ------
         options[i][0]: language code
         options[i][1]: Wiki title
-        options[i][2]: URL to the Wiki page (only if append_links == True)
+        (only if debug_mode == True) options[i][2]: URL to the Wiki page
 
         This function has refered 'MediaWiki API help' -> 'action'='query' -> 'prop'='langlinks' @https://www.mediawiki.org/w/api.php?action=help&modules=query%2Blanglinks
         """
@@ -49,9 +48,8 @@ class DownloadManager:
         }
         jsonText = requests.Session().get(url=endpoint, params=params).json()
 
-        if self.debug_mode: append_links = True
-
-        if not append_links:
+        # Append links only in debug-mode.
+        if not self.debug_mode:
             options = [(lang_dict['lang'], lang_dict['*'])
                        for lang_dict in list(
                            jsonText['query']['pages'].values())[0]['langlinks']
@@ -78,11 +76,15 @@ class DownloadManager:
         return options
 
     def download_text(self,
-                      title: str = '',
-                      language_code: str = 'en') -> 'str':
+                      title: 'str' = '',
+                      language_code: 'str' = 'en') -> 'str':
         """Download the wiki content of the target title and langcode.
-        return: str, the content(raw text).
-        For more on the api @https://www.mediawiki.org/w/api.php?action=help&modules=main
+        
+        Return
+        ------
+        str, the content(raw text).
+        
+        For more about the api @https://www.mediawiki.org/w/api.php?action=help&modules=main
         """
         # url = f'https://{languageCode}.wikipedia.org/w/api.php?action=query&prop=extracts&exlimit=1&utf8=1&titles={title}&explaintext=1&formatversion=2&format=json'
         #TODO: parse api (action)
@@ -103,7 +105,8 @@ class DownloadManager:
         jsonText = requests.Session().get(url=url, params=params).json()
         return jsonText['query']['pages'][0]['extract']
 
-    def save_text(self, text: str, title: str, language_code: str) -> None:
+    def save_text(self, text: 'str', title: 'str',
+                  language_code: 'str') -> None:
         filepath = os.path.join(self.data_path, f'{title}_{language_code}.txt')
         with open(filepath, 'w', encoding='utf-8') as f:
             f.writelines(text)
