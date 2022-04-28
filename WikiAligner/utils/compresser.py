@@ -1,14 +1,15 @@
-"""Compress big models in advance. Don't have to run online."""
-
-from sentence_transformers import SentenceTransformer
-import pickle
 import os
+import pickle
+from sentence_transformers import SentenceTransformer
+
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # BASE_DIR: WikiTrans base directory.
 
 
 class Compresser:
+    """Compress big models in advance. Don't have to run online.
+    """
     def __init__(self) -> None:
         self.model_path = os.path.join(BASE_DIR, 'models')
         if not os.path.exists(self.model_path):
