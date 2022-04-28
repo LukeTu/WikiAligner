@@ -1,24 +1,39 @@
+import re
 import syntok.segmenter as segmenter
 import mwparserfromhell
-import re
 
 
-class Cut:
+class Cutter:
     def __init__(self) -> None:
         pass
 
-    def segmentation_ie(self, document: str):
+    def segmentation_auto(self, document, language_code):
+        """Apply different segmentation methods for various languages.
+        """
+        if language_code in ['zh', 'zh-classical']:
+            for sentence in self.segmentation_zh(document):
+                yield sentence
+        else:
+            for sentence in self.segmentation_ie(document):
+                yield sentence
+
+    def segmentation_ie(self, document: 'str'):
         """Split a document into sentences.
-        It works on Indo-European languages, but mainly on English, German and Spanish.
+        It works with Indo-European languages, mainly with English, German and Spanish.
         If there's sentence-ending punctuation and quotation marks appearing together, it will ignore the quotation.
-        : document: the document to be segmented.
-        return: iterator
+
+        Parameters
+        ----------
+        document :
+            The document to be segmented.
+        Return : 
+            Segmented sentence per yield.
         """
         for paragraph in segmenter.process(document):
             for sentence in paragraph:
                 # sentence: List[Token]
                 # str.join() only takes an iterable that elements are strings
-                # Here the element are of Token class, so we have to turn them into strings during join() happens.
+                # Here the element are of Token class, so we have to convert them into strings during join() happens.
                 # We can use map(func, iter), which will apply the func (here is str()) on every element of the iter during runtime.
                 # BTW, tokens have a leading space by default, except the first token.
                 # TODO: There are wierd 3-bar equal marks can't be strip in en/es documents.
@@ -28,9 +43,14 @@ class Cut:
                 yield '\n'  # Start a new line for the next sentence.
             # yield ('\n')  # Place an empty line between paragraphs.
 
-    def segmentation_zh(self, document) -> 'list[str]':
-        """
-        : rawText: String to be parsed and sentenceized.
+    def segmentation_zh(self, document: 'str') -> 'list[str]':
+        """Split a document into sentences.
+        It works with simplified/traditional Chinese.
+
+        Parameters
+        ----------
+        document :
+            The document to be segmented.
         """
         #TODO: Update whole read, re.split, write using generator.
         pattern = '([﹒﹔﹖﹗．；。！？]["’”」』]{0,2}|：(?=["‘“「『]{1,2}|$)|={2,})'
@@ -61,16 +81,6 @@ class Cut:
         for sentence in sentences:
             yield (sentence)
             yield ('\n')
-
-    def segmentation_auto(self, document, language_code):
-        """Apply different segmentation methods for various languages.
-        """
-        if language_code in ['zh', 'zh-classical']:
-            for sentence in self.segmentation_zh(document):
-                yield sentence
-        else:
-            for sentence in self.segmentation_ie(document):
-                yield sentence
 
     # def parse_and_tokenize(self, rawText) -> 'list[str]':
     #     """
