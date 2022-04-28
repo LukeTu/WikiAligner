@@ -21,7 +21,7 @@ from utils.sim_calculator import SimCalculator
 
 _debug_mode = False  # True: only for offline tests.
 _embed_method = 'labse'
-_align_method = 'faiss'
+_sc_method = 'faiss'
 
 app = Flask(__name__)
 dm = DownloadManager(_debug_mode)
@@ -44,11 +44,13 @@ def result_success(state=True, res=None, message="获取成功"):
     return param, 200
 
 
-def download_one_text(keyword, wiki_title, language_code) -> str:
+def download_one_text(keyword: 'str', wiki_title: 'str',
+                      language_code: 'str') -> 'str':
     """
     Return
     ------
-    Downloaded TXT file path.
+    document_filepath :
+        Downloaded TXT file path.
     """
     document = dm.download_text(title=wiki_title, language_code=language_code)
     document_filepath = dm.save_text(text=document,
@@ -59,11 +61,17 @@ def download_one_text(keyword, wiki_title, language_code) -> str:
     return document_filepath
 
 
-def cut_one_text(document_filepath):
+def cut_one_text(document_filepath: 'str') -> 'str':
     """
+    Parameters
+    ----------
+    document_filepath :
+        The filepath of the document to be segmented.
+
     Return
     ------
-    Segmented TXT file path.
+    seg_filepath : str
+        Segmented TXT file path.
     """
     with open(document_filepath, encoding='utf-8') as f:
         document = f.read()
@@ -80,11 +88,22 @@ def cut_one_text(document_filepath):
 
 
 @app.route("/api/get_keyword_options", methods=["GET", "POST"])
-def get_keyword_options(query):
+def get_keyword_options(query: 'str'):
     """
+    Parameters
+    ----------
+    query :
+        A fuzzy-lookup word.
+
     Return
     ------
-    keyword_options: list[str<keyword option>]
+    keyword_options : list[str<keyword option>]
+
+    Example
+    -------
+    >>> r = get_keyword_options(query='steve')
+    >>> print(r['res']['keyword_options'])
+    ['Steve Jobs', 'STEVE', 'Steve Curry']
     """
     keyword_options = wikipedia.search(query=query, results=20)
     #TODO: expand this search function to more languages.
@@ -94,13 +113,20 @@ def get_keyword_options(query):
 
 
 @app.route("/api/get_wiki_title_options", methods=["GET", "POST"])
-def get_wiki_title_options(keyword):
+def get_wiki_title_options(keyword: 'str'):
     """
     Return
     ------
     options[i][0]: str, language code
     options[i][1]: str, Wiki title
     (only if debug_mode == True) options[i][2]: str, URL to the Wiki page
+
+    Example
+    -------
+    >>> _debug_mode = False
+    >>> r = get_wiki_title_options(keyword='Steve Jobs')
+    >>> print(r['res']['wiki_title_options'])
+    [('en', 'Steve Jobs'), ('ace', 'Steve Jobs'), ('zh', '史蒂夫·乔布斯')]
     """
     options = dm.get_langcode_title_options(keyword)
     res = {'wiki_title_options': options}
@@ -109,12 +135,12 @@ def get_wiki_title_options(keyword):
 
 #BUTTON: Submit
 @app.route("/api/analyze", methods=["GET", "POST"])
-def analyze(keyword, language_code1, wiki_title1, language_code2, wiki_title2):
-    """Download article from Wiki, cut sentence, sentence embed, and calculate similarity. 
+def analyze(keyword: 'str', language_code1: 'str', wiki_title1: 'str',
+            language_code2: 'str', wiki_title2: 'str'):
+    """Download article from Wiki, cut sentence, sentence embed, and calculate similarity.
+
     Return
     ------
-    language_code1, language_code2 : str
-        Language code for both documents.
     json_path : str
         The path to the JSON file. The file's format is like: 
         list[dict['id_{language_code1}': int<id1>, 'id_{language_code2}': int<id2>, 'sim': float<similarity>]]
@@ -140,7 +166,7 @@ def analyze(keyword, language_code1, wiki_title1, language_code2, wiki_title2):
     json_path = os.path.join(
         datapath, f'{keyword}_{language_code1}_{language_code2}.json')
 
-    for eb1_idx, eb2_idx, similarity in sc.sim_auto(method=_align_method):
+    for eb1_idx, eb2_idx, similarity in sc.sim_auto(method=_sc_method):
         json_list.append({
             f'id_{language_code1}': int(eb1_idx),
             f'id_{language_code2}': int(eb2_idx),
@@ -151,17 +177,19 @@ def analyze(keyword, language_code1, wiki_title1, language_code2, wiki_title2):
         json.dump(json_list, jsonfile)
     #TODO: the method above load all data to a list. Try ways that save memory.
 
-    res = {
-        'language_code1': language_code1,
-        'language_code2': language_code2,
-        'json_path': json_path
-    }
+    res = {'json_path': json_path}
     return result_success(res=res)
 
 
 #BUTTON: Export
 @app.route("/api/export_to_excel", methods=["GET", "POST"])
-def export_to_excel(keyword, language1, language2):
+def export_to_excel(keyword: 'str', language1: 'str', language2: 'str'):
+    """
+    Return
+    ------
+    excel_path : str
+        Path to the exported XLSX file.
+    """
     document1_filepath = os.path.join(datapath,
                                       f'{keyword}_{language1}_seg.txt')
     document2_filepath = os.path.join(datapath,
@@ -195,6 +223,8 @@ def export_to_excel(keyword, language1, language2):
     excel_path = os.path.join(datapath,
                               f'{keyword}_{language1}_{language2}.xlsx')
     df.to_excel(excel_path, encoding='utf-8-sig', index=False)
+    res = {'excel_path': excel_path}
+    return result_success(res=res)
 
 
 #TODO: Apply generator on the document/sentence passing between steps.
