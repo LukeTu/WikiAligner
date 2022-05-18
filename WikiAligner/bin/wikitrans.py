@@ -8,16 +8,17 @@ datapath = os.path.join(BASE_DIR, 'data')
 if not os.path.exists(datapath): os.makedirs(datapath)
 
 import time
+from threading import Thread
 import calendar
 from flask import Flask, render_template, request
 import json
 import pandas as pd
 import wikipedia
 from utils.download_manager import DownloadManager
-from utils.options import Options
 from utils.cutter import Cutter
 from utils.embedder import Embedder
 from utils.sim_calculator import SimCalculator
+from utils.res import Res
 
 _debug_mode = False  # True: only for offline tests.
 _embed_method = 'labse'
@@ -87,63 +88,8 @@ def cut_one_text(document_filepath: 'str') -> 'str':
     return seg_filepath
 
 
-# @app.route("/api/get_keyword_options", methods=["GET", "POST"])
-# def get_keyword_options(query: 'str'):
-#     """
-#     Parameters
-#     ----------
-#     query :
-#         A fuzzy-lookup word.
-
-#     Return
-#     ------
-#     keyword_options : list[str<keyword option>]
-
-#     Example
-#     -------
-#     >>> r = get_keyword_options(query='steve')
-#     >>> print(r['res']['keyword_options'])
-#     ['Steve Jobs', 'STEVE', 'Steve Curry']
-#     """
-#     keyword_options = wikipedia.search(query=query, results=20)
-#     #TODO: expand this search function to more languages.
-#     # For more information about wikipedia.search(), please refer to the wikipedia documentation: https://wikipedia.readthedocs.io/en/latest/code.html#api
-#     res = {'keyword_options': keyword_options}
-#     return result_success(res=res)
-
-# @app.route("/api/get_wiki_title_options", methods=["GET", "POST"])
-# def get_wiki_title_options(keyword: 'str'):
-#     """
-#     Parameters
-#     ----------
-#     keyword :
-#         A valid Wiki keyword in English. Note that it's different from Wiki title,
-#         which should be in the target language. As shown in the example below,
-#         "Steve Jobs" is a valid wiki keyword, and "史蒂夫·乔布斯" is a Wiki title in Chinese.
-
-#     Return
-#     ------
-#     options[i][0] : str
-#         Language code.
-#     options[i][1] : str
-#         Wiki title
-#     (only if debug_mode == True) options[i][2] : str
-#         URL to the Wiki page
-
-#     Example
-#     -------
-#     >>> _debug_mode = False
-#     >>> r = get_wiki_title_options(keyword='Steve Jobs')
-#     >>> print(r['res']['wiki_title_options'])
-#     [('en', 'Steve Jobs'), ('ace', 'Steve Jobs'), ('zh', '史蒂夫·乔布斯')]
-#     """
-#     options = dm.get_langcode_title_options(keyword)
-#     res = {'wiki_title_options': options}
-#     return result_success(res=res)
-
-
 @app.route("/api/get_keyword_options", methods=["GET", "POST"])
-def get_keyword_options(query=''):
+def get_keyword_options(user_query: 'str' = None):
     """
     Parameters
     ----------
@@ -152,17 +98,20 @@ def get_keyword_options(query=''):
 
     Return
     ------
-    keyword_options : list[str<keyword option>]
+    keyword_options : list[str<keyword>]
 
     Example
     -------
     # >>> r = get_keyword_options(query='steve')
     # >>> print(r['res']['keyword_options'])
-    ['Steve Jobs', 'STEVE', 'Steve Curry']
+    # ['Steve Jobs', 'STEVE', 'Steve Curry']
     """
-    query = request.json
-    if len(query['query']) > 0:
-        keyword_options = wikipedia.search(query=query['query'], results=20)
+    if user_query == None:
+        query = request.json
+        user_query = query['query']
+
+    if len(user_query) > 0:
+        keyword_options = wikipedia.search(query=user_query, results=20)
         # TODO: expand this search function to more languages.
         # For more information about wikipedia.search(), please refer to the wikipedia documentation: https://wikipedia.readthedocs.io/en/latest/code.html#api
         res = {'keyword_options': keyword_options}
@@ -172,7 +121,7 @@ def get_keyword_options(query=''):
 
 
 @app.route("/api/get_wiki_title_options", methods=["GET", "POST"])
-def get_wiki_title_options(keyword='str'):
+def get_wiki_title_options(keyword: 'str' = None):
     """
     Return
     ------
@@ -185,25 +134,62 @@ def get_wiki_title_options(keyword='str'):
     # >>> _debug_mode = False
     # >>> r = get_wiki_title_options(keyword='Steve Jobs')
     # >>> print(r['res']['wiki_title_options'])
-    [('en', 'Steve Jobs'), ('ace', 'Steve Jobs'), ('zh', '史蒂夫·乔布斯')]
+    # [('en', 'Steve Jobs'), ('ace', 'Steve Jobs'), ('zh', '史蒂夫·乔布斯')]
     """
-    query = request.json
-    if len(query['keyword']) > 0:
-        options = dm.get_langcode_title_options(keyword=query['keyword'])
+    if keyword == None:
+        query = request.json
+        keyword = query['keyword']
+
+    if len(keyword) > 0:
+        options = dm.get_langcode_title_options(keyword=keyword)
         res = {'wiki_title_options': options}
         return result_success(res=res)
     else:
         return result_success(res={'wiki_title_options': []})
 
 
+def download_and_embed(keyword: 'str' = None,
+                       language_code1: 'str' = None,
+                       wiki_title1: 'str' = None,
+                       language_code2: 'str' = None,
+                       wiki_title2: 'str' = None):
+    """Download, sentence segmentation and sentence embedding.
+    """
+    if keyword == None:
+        query = request.json
+        keyword = query['keyword']
+        language_code1 = query['language_code1']
+        wiki_title1 = query['wiki_title1']
+        language_code2 = query['language_code2']
+        wiki_title2 = query['wiki_title2']
+    file_name = '''%s\\%s_%s_%s_res.json''' % (datapath, keyword,
+                                               language_code1, language_code2)
+    if os.path.exists(file_name):
+        with open(file_name, 'r') as rf:
+            data = json.load(rf)
+            return result_success(res=data)
+    else:
+        thread = Thread(target=analyze2,
+                        kwargs={
+                            'keyword': keyword,
+                            'language_code1': language_code1,
+                            'wiki_title1': wiki_title1,
+                            'language_code2': language_code2,
+                            'wiki_title2': wiki_title2
+                        })
+        thread.start()
+        return result_success(
+            state=False,
+            res=query,
+            message=
+            "Query information has been added to the queue. Please query again in half an hour"
+        )
+
+
 #BUTTON: Submit
 @app.route("/api/analyze", methods=["GET", "POST"])
-def analyze(keyword: 'str' = 'Steve Jobs',
-            language_code1: 'str' = 'en',
-            wiki_title1: 'str' = 'Steve Jobs',
-            language_code2: 'str' = 'zh',
-            wiki_title2: 'str' = '史蒂夫·乔布斯',
-            perspective: 'int' = 0):
+def analyze(keyword: 'str', language_code1: 'str', wiki_title1: 'str',
+            language_code2: 'str', wiki_title2: 'str', perspective: 'int'):
     """Download article from Wiki, cut sentence, sentence embed, and calculate similarity.
 
     Return
@@ -306,5 +292,5 @@ if __name__ == '__main__':
     #         language_code2='zh',
     #         wiki_title2='史蒂夫·乔布斯',
     #         perspective=0)
-    export_to_excel(keyword='Steve Jobs', language1='en', language2='zh')
-    # app.run()
+    # export_to_excel(keyword='Steve Jobs', language1='en', language2='zh')
+    app.run()
