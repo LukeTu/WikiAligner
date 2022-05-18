@@ -9,7 +9,7 @@ if not os.path.exists(datapath): os.makedirs(datapath)
 
 import time
 import calendar
-from flask import Flask, render_template
+from flask import Flask, render_template, request
 import json
 import pandas as pd
 import wikipedia
@@ -87,8 +87,63 @@ def cut_one_text(document_filepath: 'str') -> 'str':
     return seg_filepath
 
 
+# @app.route("/api/get_keyword_options", methods=["GET", "POST"])
+# def get_keyword_options(query: 'str'):
+#     """
+#     Parameters
+#     ----------
+#     query :
+#         A fuzzy-lookup word.
+
+#     Return
+#     ------
+#     keyword_options : list[str<keyword option>]
+
+#     Example
+#     -------
+#     >>> r = get_keyword_options(query='steve')
+#     >>> print(r['res']['keyword_options'])
+#     ['Steve Jobs', 'STEVE', 'Steve Curry']
+#     """
+#     keyword_options = wikipedia.search(query=query, results=20)
+#     #TODO: expand this search function to more languages.
+#     # For more information about wikipedia.search(), please refer to the wikipedia documentation: https://wikipedia.readthedocs.io/en/latest/code.html#api
+#     res = {'keyword_options': keyword_options}
+#     return result_success(res=res)
+
+# @app.route("/api/get_wiki_title_options", methods=["GET", "POST"])
+# def get_wiki_title_options(keyword: 'str'):
+#     """
+#     Parameters
+#     ----------
+#     keyword :
+#         A valid Wiki keyword in English. Note that it's different from Wiki title,
+#         which should be in the target language. As shown in the example below,
+#         "Steve Jobs" is a valid wiki keyword, and "史蒂夫·乔布斯" is a Wiki title in Chinese.
+
+#     Return
+#     ------
+#     options[i][0] : str
+#         Language code.
+#     options[i][1] : str
+#         Wiki title
+#     (only if debug_mode == True) options[i][2] : str
+#         URL to the Wiki page
+
+#     Example
+#     -------
+#     >>> _debug_mode = False
+#     >>> r = get_wiki_title_options(keyword='Steve Jobs')
+#     >>> print(r['res']['wiki_title_options'])
+#     [('en', 'Steve Jobs'), ('ace', 'Steve Jobs'), ('zh', '史蒂夫·乔布斯')]
+#     """
+#     options = dm.get_langcode_title_options(keyword)
+#     res = {'wiki_title_options': options}
+#     return result_success(res=res)
+
+
 @app.route("/api/get_keyword_options", methods=["GET", "POST"])
-def get_keyword_options(query: 'str'):
+def get_keyword_options(query=''):
     """
     Parameters
     ----------
@@ -101,19 +156,23 @@ def get_keyword_options(query: 'str'):
 
     Example
     -------
-    >>> r = get_keyword_options(query='steve')
-    >>> print(r['res']['keyword_options'])
+    # >>> r = get_keyword_options(query='steve')
+    # >>> print(r['res']['keyword_options'])
     ['Steve Jobs', 'STEVE', 'Steve Curry']
     """
-    keyword_options = wikipedia.search(query=query, results=20)
-    #TODO: expand this search function to more languages.
-    # For more information about wikipedia.search(), please refer to the wikipedia documentation: https://wikipedia.readthedocs.io/en/latest/code.html#api
-    res = {'keyword_options': keyword_options}
-    return result_success(res=res)
+    query = request.json
+    if len(query['query']) > 0:
+        keyword_options = wikipedia.search(query=query['query'], results=20)
+        # TODO: expand this search function to more languages.
+        # For more information about wikipedia.search(), please refer to the wikipedia documentation: https://wikipedia.readthedocs.io/en/latest/code.html#api
+        res = {'keyword_options': keyword_options}
+        return result_success(res=res)
+    else:
+        return result_success(res={'keyword_options': []})
 
 
 @app.route("/api/get_wiki_title_options", methods=["GET", "POST"])
-def get_wiki_title_options(keyword: 'str'):
+def get_wiki_title_options(keyword='str'):
     """
     Return
     ------
@@ -123,20 +182,28 @@ def get_wiki_title_options(keyword: 'str'):
 
     Example
     -------
-    >>> _debug_mode = False
-    >>> r = get_wiki_title_options(keyword='Steve Jobs')
-    >>> print(r['res']['wiki_title_options'])
+    # >>> _debug_mode = False
+    # >>> r = get_wiki_title_options(keyword='Steve Jobs')
+    # >>> print(r['res']['wiki_title_options'])
     [('en', 'Steve Jobs'), ('ace', 'Steve Jobs'), ('zh', '史蒂夫·乔布斯')]
     """
-    options = dm.get_langcode_title_options(keyword)
-    res = {'wiki_title_options': options}
-    return result_success(res=res)
+    query = request.json
+    if len(query['keyword']) > 0:
+        options = dm.get_langcode_title_options(keyword=query['keyword'])
+        res = {'wiki_title_options': options}
+        return result_success(res=res)
+    else:
+        return result_success(res={'wiki_title_options': []})
 
 
 #BUTTON: Submit
 @app.route("/api/analyze", methods=["GET", "POST"])
-def analyze(keyword: 'str', language_code1: 'str', wiki_title1: 'str',
-            language_code2: 'str', wiki_title2: 'str'):
+def analyze(keyword: 'str' = 'Steve Jobs',
+            language_code1: 'str' = 'en',
+            wiki_title1: 'str' = 'Steve Jobs',
+            language_code2: 'str' = 'zh',
+            wiki_title2: 'str' = '史蒂夫·乔布斯',
+            perspective: 'int' = 0):
     """Download article from Wiki, cut sentence, sentence embed, and calculate similarity.
 
     Return
@@ -161,12 +228,15 @@ def analyze(keyword: 'str', language_code1: 'str', wiki_title1: 'str',
     embedding1, embedding2 = embedder.embed_auto(seg_text1,
                                                  seg_text2,
                                                  method=_embed_method)
+    #TODO: User can choose similarity's perspective.
     sc = SimCalculator(embedding1, embedding2)
     json_list = []
     json_path = os.path.join(
         datapath, f'{keyword}_{language_code1}_{language_code2}.json')
 
-    for eb1_idx, eb2_idx, similarity in sc.sim_auto(method=_sc_method):
+    #TODO: File's format and filename will change according to similarity perspective.
+    for eb1_idx, eb2_idx, similarity in sc.sim_auto(method=_sc_method,
+                                                    perspective=perspective):
         json_list.append({
             f'id_{language_code1}': int(eb1_idx),
             f'id_{language_code2}': int(eb2_idx),
@@ -176,7 +246,7 @@ def analyze(keyword: 'str', language_code1: 'str', wiki_title1: 'str',
     with open(json_path, 'w') as jsonfile:
         json.dump(json_list, jsonfile)
     #TODO: the method above load all data to a list. Try ways that save memory.
-
+    print('Analyse finished!')
     res = {'json_path': json_path}
     return result_success(res=res)
 
@@ -229,4 +299,12 @@ def export_to_excel(keyword: 'str', language1: 'str', language2: 'str'):
 
 #TODO: Apply generator on the document/sentence passing between steps.
 if __name__ == '__main__':
-    app.run()
+    # Test
+    # analyze(keyword='Steve Jobs',
+    #         language_code1='en',
+    #         wiki_title1='Steve Jobs',
+    #         language_code2='zh',
+    #         wiki_title2='史蒂夫·乔布斯',
+    #         perspective=0)
+    export_to_excel(keyword='Steve Jobs', language1='en', language2='zh')
+    # app.run()

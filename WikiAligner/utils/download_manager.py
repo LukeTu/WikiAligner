@@ -29,13 +29,33 @@ class DownloadManager:
     ) -> Union['list[tuple[str, str]]', 'list[tuple[str, str, str]]']:
         """Search and return available (language code, Wiki title, link) options.
 
+        Parameters
+        ----------
+        keyword :
+            A valid Wiki keyword in English. Note that it's different from Wiki title, 
+            which should be in the target language. As shown in the example below, 
+            "Steve Jobs" is a valid wiki keyword, and "史蒂夫·乔布斯" is a Wiki title in Chinese.
+
         Return
         ------
-        options[i][0]: language code
-        options[i][1]: Wiki title
-        (only if debug_mode == True) options[i][2]: URL to the Wiki page
+        options[i][0] : str
+            Language code.
+        options[i][1] : str
+            Wiki title
+        (only if debug_mode == True) options[i][2] : str 
+            URL to the Wiki page
 
-        This function has refered 'MediaWiki API help' -> 'action'='query' -> 'prop'='langlinks' @https://www.mediawiki.org/w/api.php?action=help&modules=query%2Blanglinks
+        For more information, please refer to 'MediaWiki API help' 
+        -> 'action'='query' -> 'prop'='langlinks' 
+        -> https://www.mediawiki.org/w/api.php?action=help&modules=query%2Blanglinks
+
+        Example
+        -------
+        >>> debug_mode = False
+        >>> dm = DownloadManager(debug_mode)
+        >>> result = dm.get_langcode_title_options(keyword='Steve Jobs')
+        >>> print(result)
+        [('en', 'Steve Jobs'), ('ace', 'Steve Jobs'), ('zh', '史蒂夫·乔布斯')]  
         """
         endpoint = "https://en.wikipedia.org/w/api.php"
         params = {
@@ -102,8 +122,8 @@ class DownloadManager:
             'formatversion': '2',
             'format': 'json'
         }
-        jsonText = requests.Session().get(url=url, params=params).json()
-        return jsonText['query']['pages'][0]['extract']
+        json_text = requests.Session().get(url=url, params=params).json()
+        return json_text['query']['pages'][0]['extract']
 
     def save_text(self, text: 'str', title: 'str',
                   language_code: 'str') -> None:
