@@ -10,7 +10,9 @@ class Embedder:
     def __init__(self) -> None:
         self.model_path = os.path.join(BASE_DIR, 'models')
         if not os.path.exists(self.model_path):
-            raise ValueError(f'Invalid model path at \n{self.model_path}')
+            raise ValueError(
+                f'Invalid model path at \n{self.model_path}. Please compress the model first.'
+            )
 
     def embed_auto(self,
                    text1: 'list[str]',
@@ -20,7 +22,8 @@ class Embedder:
             model = self.load_labse()
             embedding1 = model.encode(text1)
             embedding2 = model.encode(text2)
-            return embedding1, embedding2
+        print('Embedding finished!')
+        return embedding1, embedding2
 
     def load_labse(self):
         labse_path = os.path.join(self.model_path, 'labse_model.pkl')
