@@ -22,7 +22,7 @@ The original wild ancestor of Malus domestica was Malus sieversii, found growing
 
 
 === Genome ===
-Apple is diploid (though triploid cultivars are not uncommon), has 17 chromosomes and an estimated genome size of approximately 650 Mb. Several whole genome sequences have been made available, the first one in 2010 was based on the diploid cultivar 'Golden Delicious'. However, this first whole genome sequence turned out to contain several errors in part owing to the high degree of heterozygosity in diploid apples which, in combination with an ancient genome duplication, complicated the assembly. Recently, double- and trihaploid individuals have been sequenced, yielding whole genome sequences of higher quality. The first whole genome assembly was estimated to contain around 57,000 genes, though the more recent genome sequences support more moderate estimates between 42,000 and 44,700 protein-coding genes. Among other things, the availability of whole genome sequences has provided evidence that the wild ancestor of the cultivated apple most likely is Malus sieversii. Re-sequencing of multiple accessions has supported this, while also suggesting extensive introgression from Malus sylvestris following domestication.
+Apples are diploid (though triploid cultivars are not uncommon), has 17 chromosomes and an estimated genome size of approximately 650 Mb. Several whole genome sequences have been made available, the first one in 2010 was based on the diploid cultivar 'Golden Delicious'. However, this first whole genome sequence turned out to contain several errors in part owing to the high degree of heterozygosity in diploid apples which, in combination with an ancient genome duplication, complicated the assembly. Recently, double- and trihaploid individuals have been sequenced, yielding whole genome sequences of higher quality. The first whole genome assembly was estimated to contain around 57,000 genes, though the more recent genome sequences support more moderate estimates between 42,000 and 44,700 protein-coding genes. Among other things, the availability of whole genome sequences has provided evidence that the wild ancestor of the cultivated apple most likely is Malus sieversii. Re-sequencing of multiple accessions has supported this, while also suggesting extensive introgression from Malus sylvestris following domestication.
 
 
 == History ==
@@ -137,7 +137,7 @@ Apple scab: Apple scab causes leaves to develop olive-brown spots with a velvety
 
 == Production ==
 
-World production of apples in 2019 was 87 million tonnes, with China producing 49% of the total (table). Secondary producers were the United States and Turkey.
+World production of apples in 2020 was 86 million tonnes, with China producing 47% of the total (table). Secondary producers were the United States and Turkey.
 
 
 == Nutrition ==

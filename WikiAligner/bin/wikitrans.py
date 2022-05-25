@@ -20,6 +20,10 @@ from utils.embedder import Embedder
 from utils.sim_calculator import SimCalculator
 from utils.res import Res
 
+from threading import Thread
+res_ope = Res()
+
+
 _debug_mode = False  # True: only for offline tests.
 _embed_method = 'labse'
 _sc_method = 'faiss'
@@ -88,6 +92,7 @@ def cut_one_text(document_filepath: 'str') -> 'str':
     return seg_filepath
 
 
+
 @app.route("/api/get_keyword_options", methods=["GET", "POST"])
 def get_keyword_options(user_query: 'str' = None):
     """
@@ -148,6 +153,44 @@ def get_wiki_title_options(keyword: 'str' = None):
         return result_success(res={'wiki_title_options': []})
 
 
+
+
+# BUTTON: Submit
+@app.route("/api/analyze", methods=["GET", "POST"])
+def analyze(keyword='', language_code1='', wiki_title1='', language_code2='', wiki_title2=''):
+    query = request.json
+    keyword = query['keyword']
+    language_code1 = query['language_code1']
+    wiki_title1 = query['wiki_title1']
+    language_code2 = query['language_code2']
+    wiki_title2 = query['wiki_title2']
+    data_path = os.path.join(BASE_DIR, 'data')
+    file_name = '''%s\\%s_%s_%s_res.json''' % (data_path, keyword, language_code1, language_code2)
+    file_json = '''%s\\%s_%s_%s.json''' % (data_path, keyword, language_code1, language_code2)
+    print(file_json)
+    if os.path.exists(file_name):
+        with open(file_name, 'r') as rf:
+            data = json.load(rf)
+            return result_success(res=data)
+    elif os.path.exists(file_json):
+        res_ope.res_info(keyword=keyword, language_code1=language_code1, wiki_title1=wiki_title1, language_code2=language_code2, wiki_title2=wiki_title2)
+        with open(file_name, 'r') as rf:
+            data = json.load(rf)
+            return result_success(res=data)
+    else:
+        thread = Thread(target=analyze2, kwargs={'keyword': keyword,'language_code1': language_code1,'wiki_title1' :wiki_title1,'language_code2' :language_code2,'wiki_title2' :wiki_title2})
+        thread.start()
+        return result_success(state=False,res=query, message="Query information has been added to the queue. Please query again in half an hour")
+
+
+#BUTTON: Submit
+def analyze2(keyword: 'str' = 'Steve Jobs',
+            language_code1: 'str' = 'en',
+            wiki_title1: 'str' = 'Steve Jobs',
+            language_code2: 'str' = 'zh',
+            wiki_title2: 'str' = '史蒂夫·乔布斯',
+            perspective: 'int' = 0):
+
 def download_and_embed(keyword: 'str' = None,
                        language_code1: 'str' = None,
                        wiki_title1: 'str' = None,
@@ -195,7 +238,7 @@ def analyze(keyword: 'str', language_code1: 'str', wiki_title1: 'str',
     Return
     ------
     json_path : str
-        The path to the JSON file. The file's format is like: 
+        The path to the JSON file. The file's format is like:
         list[dict['id_{language_code1}': int<id1>, 'id_{language_code2}': int<id2>, 'sim': float<similarity>]]
     """
     seg_text1_path = cut_one_text(
@@ -233,8 +276,8 @@ def analyze(keyword: 'str', language_code1: 'str', wiki_title1: 'str',
         json.dump(json_list, jsonfile)
     #TODO: the method above load all data to a list. Try ways that save memory.
     print('Analyse finished!')
-    res = {'json_path': json_path}
-    return result_success(res=res)
+    # res = {'json_path': json_path}
+    # return result_success(res=res)
 
 
 #BUTTON: Export
