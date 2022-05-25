@@ -1,0 +1,8 @@
+location /baseApi{
+   add_header 'Access-Control-Allow-Origin' '*';
+   proxy_pass http://127.0.0.1:5000/api;
+}
+location /trans{
+   add_header 'Access-Control-Allow-Origin' '*';
+   proxy_pass  https://fanyi-api.baidu.com/api/trans;
+}
