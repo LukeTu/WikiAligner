@@ -18,6 +18,9 @@ from utils.options import Options
 from utils.cutter import Cutter
 from utils.embedder import Embedder
 from utils.sim_calculator import SimCalculator
+from utils.res import Res
+from threading import Thread
+res_ope = Res()
 
 _debug_mode = False  # True: only for offline tests.
 _embed_method = 'labse'
@@ -87,60 +90,6 @@ def cut_one_text(document_filepath: 'str') -> 'str':
     return seg_filepath
 
 
-# @app.route("/api/get_keyword_options", methods=["GET", "POST"])
-# def get_keyword_options(query: 'str'):
-#     """
-#     Parameters
-#     ----------
-#     query :
-#         A fuzzy-lookup word.
-
-#     Return
-#     ------
-#     keyword_options : list[str<keyword option>]
-
-#     Example
-#     -------
-#     >>> r = get_keyword_options(query='steve')
-#     >>> print(r['res']['keyword_options'])
-#     ['Steve Jobs', 'STEVE', 'Steve Curry']
-#     """
-#     keyword_options = wikipedia.search(query=query, results=20)
-#     #TODO: expand this search function to more languages.
-#     # For more information about wikipedia.search(), please refer to the wikipedia documentation: https://wikipedia.readthedocs.io/en/latest/code.html#api
-#     res = {'keyword_options': keyword_options}
-#     return result_success(res=res)
-
-# @app.route("/api/get_wiki_title_options", methods=["GET", "POST"])
-# def get_wiki_title_options(keyword: 'str'):
-#     """
-#     Parameters
-#     ----------
-#     keyword :
-#         A valid Wiki keyword in English. Note that it's different from Wiki title,
-#         which should be in the target language. As shown in the example below,
-#         "Steve Jobs" is a valid wiki keyword, and "史蒂夫·乔布斯" is a Wiki title in Chinese.
-
-#     Return
-#     ------
-#     options[i][0] : str
-#         Language code.
-#     options[i][1] : str
-#         Wiki title
-#     (only if debug_mode == True) options[i][2] : str
-#         URL to the Wiki page
-
-#     Example
-#     -------
-#     >>> _debug_mode = False
-#     >>> r = get_wiki_title_options(keyword='Steve Jobs')
-#     >>> print(r['res']['wiki_title_options'])
-#     [('en', 'Steve Jobs'), ('ace', 'Steve Jobs'), ('zh', '史蒂夫·乔布斯')]
-#     """
-#     options = dm.get_langcode_title_options(keyword)
-#     res = {'wiki_title_options': options}
-#     return result_success(res=res)
-
 
 @app.route("/api/get_keyword_options", methods=["GET", "POST"])
 def get_keyword_options(query=''):
@@ -196,9 +145,37 @@ def get_wiki_title_options(keyword='str'):
         return result_success(res={'wiki_title_options': []})
 
 
-#BUTTON: Submit
+
+# BUTTON: Submit
 @app.route("/api/analyze", methods=["GET", "POST"])
-def analyze(keyword: 'str' = 'Steve Jobs',
+def analyze(keyword='', language_code1='', wiki_title1='', language_code2='', wiki_title2=''):
+    query = request.json
+    keyword = query['keyword']
+    language_code1 = query['language_code1']
+    wiki_title1 = query['wiki_title1']
+    language_code2 = query['language_code2']
+    wiki_title2 = query['wiki_title2']
+    data_path = os.path.join(BASE_DIR, 'data')
+    file_name = '''%s\\%s_%s_%s_res.json''' % (data_path, keyword, language_code1, language_code2)
+    file_json = '''%s\\%s_%s_%s.json''' % (data_path, keyword, language_code1, language_code2)
+    print(file_json)
+    if os.path.exists(file_name):
+        with open(file_name, 'r') as rf:
+            data = json.load(rf)
+            return result_success(res=data)
+    elif os.path.exists(file_json):
+        res_ope.res_info(keyword=keyword, language_code1=language_code1, wiki_title1=wiki_title1, language_code2=language_code2, wiki_title2=wiki_title2)
+        with open(file_name, 'r') as rf:
+            data = json.load(rf)
+            return result_success(res=data)
+    else:
+        thread = Thread(target=analyze2, kwargs={'keyword': keyword,'language_code1': language_code1,'wiki_title1' :wiki_title1,'language_code2' :language_code2,'wiki_title2' :wiki_title2})
+        thread.start()
+        return result_success(state=False,res=query, message="Query information has been added to the queue. Please query again in half an hour")
+
+
+#BUTTON: Submit
+def analyze2(keyword: 'str' = 'Steve Jobs',
             language_code1: 'str' = 'en',
             wiki_title1: 'str' = 'Steve Jobs',
             language_code2: 'str' = 'zh',
@@ -209,7 +186,7 @@ def analyze(keyword: 'str' = 'Steve Jobs',
     Return
     ------
     json_path : str
-        The path to the JSON file. The file's format is like: 
+        The path to the JSON file. The file's format is like:
         list[dict['id_{language_code1}': int<id1>, 'id_{language_code2}': int<id2>, 'sim': float<similarity>]]
     """
     seg_text1_path = cut_one_text(
@@ -247,8 +224,8 @@ def analyze(keyword: 'str' = 'Steve Jobs',
         json.dump(json_list, jsonfile)
     #TODO: the method above load all data to a list. Try ways that save memory.
     print('Analyse finished!')
-    res = {'json_path': json_path}
-    return result_success(res=res)
+    # res = {'json_path': json_path}
+    # return result_success(res=res)
 
 
 #BUTTON: Export
@@ -299,12 +276,4 @@ def export_to_excel(keyword: 'str', language1: 'str', language2: 'str'):
 
 #TODO: Apply generator on the document/sentence passing between steps.
 if __name__ == '__main__':
-    # Test
-    # analyze(keyword='Steve Jobs',
-    #         language_code1='en',
-    #         wiki_title1='Steve Jobs',
-    #         language_code2='zh',
-    #         wiki_title2='史蒂夫·乔布斯',
-    #         perspective=0)
-    export_to_excel(keyword='Steve Jobs', language1='en', language2='zh')
-    # app.run()
+    app.run()

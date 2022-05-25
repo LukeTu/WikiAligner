@@ -1,6 +1,7 @@
-Steven Paul Jobs (February 24, 1955 – October 5, 2011) was an American business magnate, industrial designer, media proprietor, and investor.
+Steven Paul Jobs (February 24, 1955 – October 5, 2011) was an American entrepreneur, inventor, business magnate, media proprietor, and investor.
 He was the co-founder, chairman, and CEO of Apple; the chairman and majority shareholder of Pixar; a member of The Walt Disney Company's board of directors following its acquisition of Pixar; and the founder, chairman, and CEO of NeXT.
 He is widely recognized as a pioneer of the personal computer revolution of the 1970s and 1980s, along with his early business partner and fellow Apple co-founder Steve Wozniak.
+Born in San Francisco to a Syrian father and a German-American mother, Jobs was adopted shortly after his birth.
 Jobs attended Reed College in 1972 before withdrawing that same year, and traveled through India in 1974 seeking enlightenment and studying Zen Buddhism.
 He and Wozniak co-founded Apple in 1976 to sell Wozniak's Apple I personal computer.
 Together, the duo gained fame and wealth a year later with the Apple II, one of the first highly successful mass-produced microcomputers.
@@ -11,7 +12,7 @@ Jobs was forced out of Apple in 1985 after a long power struggle with the compan
 That same year, Jobs took a few Apple employees with him to found NeXT, a computer platform development company that specialized in computers for higher-education and business markets.
 In addition, he helped to develop the visual effects industry when he funded the computer graphics division of George Lucas's Lucasfilm in 1986.
 The new company was Pixar, which produced the first 3D computer animated feature film Toy Story (1995) and went on to become a major animation studio, producing over 20 films since.
-Jobs became CEO of Apple in 1997, following his company's acquisition of NeXT.
+Jobs became CEO of Apple in 1997, following the company's acquisition of NeXT.
 He was largely responsible for helping revive Apple, which had been on the verge of bankruptcy.
 He worked closely with English designer Jony Ive to develop a line of products that had larger cultural ramifications, beginning in 1997 with the "Think different" advertising campaign and leading to the Apple Store, App Store, iMac, iPad, iPod, iPhone, iTunes, and iTunes Store.
 In 2001, the original Mac OS was replaced with the completely new Mac OS X (now known as macOS), based on NeXT's NeXTSTEP platform, giving the OS a modern Unix-based foundation for the first time.
@@ -21,12 +22,12 @@ Background
 Biological and adoptive families ===
 Steven Paul Jobs was born in San Francisco, California, on February 24, 1955, the son of Joanne Carole Schieble and Abdulfattah Jandali (Arabic: عبد الفتاح الجندلي).
 He was adopted by Clara (née Hagopian) and Paul Reinhold Jobs.
-Jandali, Jobs' biological father, was Syrian and went by the name "John".
-He grew up in an Arab Muslim household in Homs.
+Jandali, Jobs's biological father, was Syrian and went by the name "John".
+He grew up in an Arab Muslim household in Homs, Syria.
 While an undergraduate at the American University of Beirut in Lebanon, he was a student activist and spent time in prison for his political activities.
 He pursued a PhD at the University of Wisconsin, where he met Schieble, an American Catholic of German and Swiss descent.
 As a doctoral candidate, Jandali was a teaching assistant for a course Schieble was taking, although both were the same age.
-Novelist Mona Simpson, Jobs' biological sister, noted that Schieble's parents were not happy that their daughter was dating a Muslim.
+Novelist Mona Simpson, Jobs's biological sister, noted that Schieble's parents were not happy that their daughter was dating a Muslim.
 Walter Isaacson, author of the biography Steve Jobs, additionally states that Schieble's father "threatened to cut her off completely" if she continued the relationship.
 Jobs's adoptive father was a Coast Guard mechanic.
 After leaving the Coast Guard, he married Hagopian, an American of Armenian descent, in 1946.
@@ -37,14 +38,14 @@ Schieble became pregnant with Jobs in 1954, when she and Jandali spent the summe
 According to Jandali, Schieble deliberately did not involve him in the process: "Without telling me, Joanne upped and left to move to San Francisco to have the baby without anyone knowing, including me."Schieble gave birth to Jobs in San Francisco on February 24, 1955, and chose an adoptive couple for him that was "Catholic, well-educated, and wealthy", but the couple later changed their mind.
 Jobs was then placed with Paul and Clara Jobs, neither of whom had a college education, and Schieble refused to sign the adoption papers.
 She then took the matter to court in an attempt to have her baby placed with a different family, and only consented to releasing the baby to Paul and Clara after the couple pledged to pay for the boy's college education.
-Jobs' cousin, Bassma Al Jandaly, maintains that Jobs' birth name was Abdul Lateef Jandali.
+Jobs's cousin, Bassma Al Jandaly, maintains that Jobs's birth name was Abdul Lateef Jandali.
 In his youth, Steve's parents took him to a Lutheran church.
 When Jobs was in high school, Clara admitted to his girlfriend, Chrisann Brennan, that she "was too frightened to love [Steve] for the first six months of his life ...
 I was scared they were going to take him away from me.
 Even after we won the case, Steve was so difficult a child that by the time he was two I felt we had made a mistake.
 I wanted to return him."
 When Chrisann shared this comment with Steve, he stated that he was already aware, and would later say he was deeply loved and indulged by Paul and Clara.
-Many years later, Jobs' wife Laurene also noted that "he felt he had been really blessed by having the two of them as parents."
+Many years later, Jobs's wife Laurene also noted that "he felt he had been really blessed by having the two of them as parents."
 Jobs would become upset when Paul and Clara were referred to as his "adoptive parents"; he regarded them as his parents "1,000%".
 With regard to his biological parents, Jobs referred to them as "my sperm and egg bank.
 That's not harsh, it's just the way it was, a sperm bank thing, nothing more."
@@ -76,7 +77,7 @@ Though the Jobs family was not well off, they used all their savings in 1967 to 
 The new house (a three-bedroom home on Crist Drive in Los Altos, California) was in the better Cupertino School District, Cupertino, California, and was embedded in an environment that was even more heavily populated with engineering families than the Mountain View area was.
 The house was declared a historic site in 2013, as it was the first site for Apple Computer; as of 2013, it was owned by Jobs's sister, Patty, and occupied by his step-mother, Marilyn.
 When he was 13 in 1968, Jobs was given a summer job by Bill Hewlett (of Hewlett-Packard) after Jobs cold-called him to ask for parts for an electronics project.
-Homestead High ==
+Homestead High
 The location of the Los Altos home meant that Jobs would be able to attend nearby Homestead High School, which had strong ties to Silicon Valley.
 He began his first year there in late 1968 along with Bill Fernandez.
 (Fernandez introduced Jobs to Steve Wozniak, and would later be Apple's first employee.)
@@ -256,7 +257,7 @@ Following his resignation from Apple in 1985, Jobs founded NeXT Inc. with $7 mil
 A year later he was running out of money, and he sought venture capital with no product on the horizon.
 Eventually, Jobs attracted the attention of billionaire Ross Perot, who invested heavily in the company.
 The NeXT computer was shown to the world in what was considered Jobs's comeback event, a lavish invitation-only gala launch event that was described as a multimedia extravaganza.
-The celebration was held at the Louise M. Davies Symphony Hall, San Francisco, California on Wednesday October 12, 1988.
+The celebration was held at the Louise M. Davies Symphony Hall, San Francisco, California, on Wednesday, October 12, 1988.
 Steve Wozniak said in a 2013 interview that while Jobs was at NeXT he was "really getting his head together".NeXT workstations were first released in 1990 and priced at US$9,999.
 Like the Apple Lisa, the NeXT workstation was technologically advanced and designed for the education sector, but was largely dismissed as cost-prohibitive for educational institutions.
 The NeXT workstation was known for its technical strengths, chief among them its object-oriented software development system.
@@ -367,8 +368,8 @@ According to Harvard researcher Ramzi Amri, his choice of alternative treatment 
 Other doctors agree that Jobs's diet was insufficient to address his disease.
 However, cancer researcher and alternative medicine critic David Gorski wrote that "it's impossible to know whether and by how much he might have decreased his chances of surviving his cancer through his flirtation with woo.
 My best guess was that Jobs probably only modestly decreased his chances of survival, if that."
-Barrie R. Cassileth, the chief of Memorial Sloan Kettering Cancer Center's integrative medicine department, on the other hand, said, "Jobs's faith in alternative medicine likely cost him his life....
-He had the only kind of pancreatic cancer that is treatable and curable....
+Barrie R. Cassileth, the chief of Memorial Sloan Kettering Cancer Center's integrative medicine department, on the other hand, said, "Jobs's faith in alternative medicine likely cost him his life ...
+He had the only kind of pancreatic cancer that is treatable and curable ...
 He essentially committed suicide."
 According to Jobs's biographer, Walter Isaacson, "for nine months he refused to undergo surgery for his pancreatic cancer – a decision he later regretted as his health declined".
 "Instead, he tried a vegan diet, acupuncture, herbal remedies, and other treatments he found online, and even consulted a psychic.
@@ -407,7 +408,7 @@ Unfortunately, that day has come."
 Jobs became chairman of the board and named Tim Cook as his successor as CEO.
 Jobs continued to work for Apple until the day before his death six weeks later.
 Death
-Jobs died at his Palo Alto, California home around 3 p.m. (PDT) on October 5, 2011, due to complications from a relapse of his previously treated islet-cell pancreatic neuroendocrine tumor, which resulted in respiratory arrest.
+Jobs died at his Palo Alto, California, home around 3 p.m. (PDT) on October 5, 2011, due to complications from a relapse of his previously treated islet-cell pancreatic neuroendocrine tumor, which resulted in respiratory arrest.
 He had lost consciousness the day before and died with his wife, children, and sisters at his side.
 His sister, Mona Simpson, described his death thus: "Steve's final words, hours earlier, were monosyllables, repeated three times.
 Before embarking, he'd looked at his sister Patty, then for a long time at his children, then at his life's partner, Laurene, and then over their shoulders past them.
@@ -435,7 +436,7 @@ Childhood friend and fellow Apple co-founder Steve Wozniak, former owner of what
 Per his request, Jobs is buried in an unmarked grave at Alta Mesa Memorial Park, the only nonsectarian cemetery in Palo Alto.
 On October 7, 2021, Apple released a commemorative YouTube video on the tenth anniversary of Jobs's passing.
 Innovations and designs ==
-Jobs' design aesthetic was influenced by philosophies of Zen and Buddhism.
+Jobs's design aesthetic was influenced by philosophies of Zen and Buddhism.
 In India, he experienced Buddhism while on his seven-month spiritual journey, and his sense of intuition was influenced by the spiritual people with whom he studied.
 He also learned from many references and sources, such as modernist architectural style of Joseph Eichler, and the industrial designs of Richard Sapper and Dieter Rams.
 According to Apple co-founder Steve Wozniak, "Steve didnot ever code.
@@ -539,9 +540,9 @@ Jobs's father, Paul, died a year and a half later, on March 5, 1993.
 Jobs's childhood home remains a tourist attraction and is currently owned by his stepmother (Paul's second wife), Marilyn Jobs.
 Jobs and Powell had two more children, Erin, born in August 1995, and Eve, born in May 1998.
 The family lived in Palo Alto, California.
-A journalist who grew up locally remembered him as owning the house with "the scariest [Halloween] decorations in Palo Alto...
+A journalist who grew up locally remembered him as owning the house with "the scariest [Halloween] decorations in Palo Alto ...
 I donot remember seeing him.
-I was busy being terrified."Although a billionaire, Jobs made it known that, like Bill Gates, most of his monetary fortune would not be left to his children.
+I was busy being terrified."Although a billionaire, Jobs made it known that, like Bill Gates, he had stipulated that most of his monetary fortune would not be left to his children.
 These technology leaders also had in common another family-related area: both men limited their children's access, age appropriate, to social media, computer games and the Internet.
 Family ===
 Chrisann Brennan notes that after Jobs was forced out of Apple, "he apologized many times over for his behavior" towards her and Lisa.
@@ -633,8 +634,7 @@ Simon and Schuster.
 ISBN 9781501127625.
 Linzmayer, Owen W. (2004).
 Apple Confidential 2.0: The Definitive History of the World's Most Colorful Company.
-No Starch Press. p.
-81.
+No Starch Press. p. 81.
 ISBN 978-1-59327-010-0.
 Retrieved April 15, 2014.
 External links ==

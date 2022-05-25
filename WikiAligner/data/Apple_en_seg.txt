@@ -37,7 +37,7 @@ Cultivation of the species, most likely beginning on the forested flanks of the 
 Significant exchange with Malus sylvestris, the crabapple, resulted in current populations of apples being more related to crabapples than to the more morphologically similar progenitor Malus sieversii.
 In strains without recent admixture the contribution of the latter predominates.
 Genome ===
-Apple is diploid (though triploid cultivars are not uncommon), has 17 chromosomes and an estimated genome size of approximately 650 Mb.
+Apples are diploid (though triploid cultivars are not uncommon), has 17 chromosomes and an estimated genome size of approximately 650 Mb.
 Several whole genome sequences have been made available, the first one in 2010 was based on the diploid cultivar 'Golden Delicious'.
 However, this first whole genome sequence turned out to contain several errors in part owing to the high degree of heterozygosity in diploid apples which, in combination with an ancient genome duplication, complicated the assembly.
 Recently, double- and trihaploid individuals have been sequenced, yielding whole genome sequences of higher quality.
@@ -212,7 +212,7 @@ Other pests that affect apple trees include Codling moths and apple maggots.
 Young apple trees are also prone to mammal pests like mice and deer, which feed on the soft bark of the trees, especially in winter.
 The larvae of the apple clearwing moth (red-belted clearwing) burrow through the bark and into the phloem of apple trees, potentially causing significant damage.
 Production
-World production of apples in 2019 was 87 million tonnes, with China producing 49% of the total (table).
+World production of apples in 2020 was 86 million tonnes, with China producing 47% of the total (table).
 Secondary producers were the United States and Turkey.
 Nutrition ==
 A raw apple is 86% water and 14% carbohydrates, with negligible content of fat and protein (table).
