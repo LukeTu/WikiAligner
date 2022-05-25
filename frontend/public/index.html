@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+    <link rel="icon" href="<%= BASE_URL %>favicon.ico">
+    <title><%= htmlWebpackPlugin.options.title %></title>
+      <style>
+          * {
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, Helvetica Neue, PingFang SC, Microsoft YaHei, Source Han Sans SC, Noto Sans CJK SC, WenQuanYi Micro Hei, sans-serif;
+}
+
+html, body {
+  height: 100%;
+  -ms-transform-origin: center top;
+}
+
+div {
+  -moz-user-select: none; /*火狐*/
+  -webkit-user-select: none; /*webkit浏览器*/
+  -ms-user-select: none; /*IE10*/
+  -khtml-user-select: none; /*早期浏览器*/
+  user-select: none;
+}
+
+body {
+  background: #fff
+}
+
+.image {
+  width: 100%;
+}
+
+.main {
+  margin-top: 50px
+}
+
+.box-title {
+  border-left: 3px solid #009999;
+  margin-left: 15px;
+  margin-top: 10px;
+  padding-left: 5px;
+}
+
+.bg-blue {
+  background: #009999 !important;
+}
+
+.bg_blue {
+  color: #fff;
+  background: #009999 !important;
+}
+
+.bg-demo {
+  color: #fff;
+  background: #7c70a2;
+}
+
+.bg-orange:hover {
+  color: #fff;
+  background: orange;
+}
+
+.box-text {
+  padding: 10px;
+  border: 2px solid #aaa;
+  border-radius: 5px;
+  margin: 10px;
+  font-size: 16px;
+  color: #888;
+  height: 600px;
+  text-align: left;
+  overflow-y: scroll;
+  white-space: normal;
+  word-break: break-all;
+  word-wrap: break-word;
+  cursor: pointer;
+}
+
+.box-text b {
+  font-weight: normal;
+}
+
+.app h3 {
+  text-align: center;
+  display: block
+}
+
+.num_tag {
+  font-size: 12px;
+  color: #fff;
+  font-weight: bold;
+  vertical-align: top;
+  background: green;
+  margin-top: 5px;
+  border-radius: 50%;
+  padding-left: 2px;
+  padding-right: 2px
+}
+
+.icon-self {
+  background: #888888;
+  padding: 7px;
+  border-radius: 50%;
+  color: #fff;
+  cursor: pointer;
+}
+#app{
+    position: relative;
+}
+.el-main{
+    min-height: 90vh;
+}
+      </style>
+  </head>
+  <body>
+    <noscript>
+      <strong>We're sorry but <%= htmlWebpackPlugin.options.title %> doesn't work properly without JavaScript enabled. Please enable it to continue.</strong>
+    </noscript>
+    <div id="app"></div>
+    <!-- built files will be auto injected -->
+  </body>
+</html>
