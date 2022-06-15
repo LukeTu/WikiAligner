@@ -103,7 +103,7 @@ $ python WikiAligner/WikiAligner/bin/wikitrans.py
 - [ ] Download and parsing to URL search [***]
 - [ ] File upload [**]
 
-- * stands for difficulties
+[*] stands for difficulties
 
 ## TODO
 
