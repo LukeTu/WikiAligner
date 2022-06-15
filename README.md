@@ -1,6 +1,6 @@
 # WikiAligner
 
-## Instruction for deploying front-end(Temporarily deprecation)
+## Instruction for deploying front-end(temporary deprecation)
 
 ~~The running of front-end requires a Apache environment, which has been included in the [XMAPP](https://www.apachefriends.org/index.html), a cross-platform web server solution stack package.~~
 
@@ -97,13 +97,13 @@ $ python WikiAligner/WikiAligner/bin/wikitrans.py
 - [ ] Find alignment from revisions [*]
 - [x] Downloading files (Spreadsheet) [***]
 - [ ] Analysis and filtering of identical requests [*]
-- [ ] Process optimization, queuing requests [**************]
+- [ ] Process optimization, queuing requests [******]
 - [ ] Split language model parsing, caching judgement on steps [***]
 - [ ] Add switch to double URL retrieval (Wikipedia/Custom) [*]
 - [ ] Download and parsing to URL search [***]
 - [ ] File upload [**]
 
-
+- * stands for difficulties
 
 ## TODO
 
