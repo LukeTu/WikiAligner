@@ -1,27 +1,43 @@
 import os
 from typing import Union
 import requests
+from polyglot.text import Text
+from polyglot.detect.base import logger as polyglot_logger
 
-#TODO: change all URLs and parameters to the api to CAPITAL and save them in setting.py
+polyglot_logger.setLevel("ERROR")  # Close the warning from polyglot.
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-# BASE_DIR: WikiTrans base directory.
+import _global
 
 
 class DownloadManager:
-    def __init__(self, debug_mode=False) -> None:
-        self.data_path = os.path.join(BASE_DIR, 'data')
-
-        if not os.path.exists(self.data_path):
-            os.makedirs(self.data_path)
-
+    def __init__(self, save_path, debug_mode=False) -> None:
+        self.save_path = save_path
         self.debug_mode = debug_mode
+        return None
 
     def get_query(self, prompt: 'str' = ''):
         if prompt:
             print(prompt)
         query = input() or None
         return query
+
+    def _identify_lang(self, text):
+        return Text(text).language.code
+
+    def search_keyword(self, query, limit=10):
+        langcode = self._identify_lang(query)
+        endpoint = f"https://{langcode}.wikipedia.org/w/api.php"
+        params = {
+            "action": "query",
+            "format": "json",
+            "list": "search",
+            "srsearch": query,
+            "srlimit": limit,
+            "srprop": ""
+        }
+        json_text = requests.Session().get(url=endpoint, params=params).json()
+        keywords = [_['title'] for _ in json_text['query']['search']]
+        return keywords
 
     def get_langcode_title_options(
         self,
@@ -39,7 +55,7 @@ class DownloadManager:
         Return
         ------
         options[i][0] : str
-            Language code.
+            Language code in ISO 639-1 (It can be tested using France: 639-1=fr, 639-2=fre/fra, 639-3=fra)
         options[i][1] : str
             Wiki title
         (only if debug_mode == True) options[i][2] : str 
@@ -57,7 +73,9 @@ class DownloadManager:
         >>> print(result)
         [('en', 'Steve Jobs'), ('ace', 'Steve Jobs'), ('zh', '史蒂夫·乔布斯')]  
         """
-        endpoint = "https://en.wikipedia.org/w/api.php"
+        langcode = self._identify_lang(keyword)
+        #TODO: 真的需要把keyword变成不同语言吗？这样就违反了keyword的英语一致性？
+        endpoint = f"https://{langcode}.wikipedia.org/w/api.php"
         params = {
             "action": "query",
             "prop": "langlinks",
@@ -87,13 +105,48 @@ class DownloadManager:
             eng_option = (
                 'en', keyword,
                 f'https://en.wikipedia.org/wiki/{keyword.replace(" ","_")}')
-        # lang_dict['lang']: language code
-        # lang_dict['*']: Wiki title
-        # lang_dict['url']: URL to the Wiki page
+            # lang_dict['lang']: language code
+            # lang_dict['*']: Wiki title
+            # lang_dict['url']: URL to the Wiki page
 
         # The <endpoint> above doesn't return 'en'(English) option, so we have to insert it additionally.
         options.insert(0, eng_option)
-        return options
+        return sorted(options, key=lambda option: option[0])
+
+    def filter_option(
+        self, options, languages: 'list'
+    ) -> Union['list[tuple[str, str]]', 'list[tuple[str, str, str]]']:
+        """Filter and keep options only within a language list user specifies.
+
+        Parameters
+        ----------
+        options :
+            Language code and Wiki title options.
+        languages :
+            Language code of languages user would like to keep.
+        
+        Return
+        ------
+        options_ :
+            Filtered option; the same format as <options>.
+        """
+        languages = sorted(languages)
+        #NOTE: <options> returned from self.get_langcode_title_options() is already sorted by the language code.
+        i = 0
+        j = 0
+        options_ = []
+
+        while i < len(languages) and j < len(options):
+            if languages[i] == options[j][0]:
+                options_.append(options[j])
+                i += 1
+                j += 1
+            elif languages[i] > options[j][0]:
+                j += 1
+            else:
+                i += 1
+
+        return options_
 
     def download_text(self,
                       title: 'str' = '',
@@ -127,8 +180,37 @@ class DownloadManager:
 
     def save_text(self, text: 'str', title: 'str',
                   language_code: 'str') -> None:
-        filepath = os.path.join(self.data_path, f'{title}_{language_code}.txt')
+        """Save downloaded text.
+        """
+        filepath = os.path.join(self.save_path, f'{title}_{language_code}.txt')
         with open(filepath, 'w', encoding='utf-8') as f:
             f.writelines(text)
         print(f'Text saved at {filepath}')
         return filepath
+
+
+if __name__ == '__main__':
+    # Tests
+    dm = DownloadManager(_global.CUTSPATH, debug_mode=False)
+
+    ####################################################################
+    # Test self.search_keyword()
+    q = 'steve jobs'
+    print(dm.search_keyword(q))
+    # keyword = 'Steve Jobs'
+
+    ####################################################################
+    # Test self.get_langcode_title_options()
+    # options = dm.get_langcode_title_options(keyword=keyword)
+    # print(f'Options of {keyword}: \n', sorted(languages))
+
+    ####################################################################
+    # Test language filter
+    # with open(os.path.join(_global.BASE_DIR, 'utils',
+    #                        'labse_languages.txt')) as f:
+    #     languages = f.readlines()
+    #     languages = [l.strip() for l in languages]
+
+    # print('LaBSE languages:\n', sorted(languages))
+    # filtered = dm.filter_option(options, languages)
+    # print(f'Options filtered:\n', filtered)
