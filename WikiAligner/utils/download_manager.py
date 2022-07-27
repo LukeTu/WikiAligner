@@ -1,10 +1,9 @@
 import os
 from typing import Union
 import requests
-from polyglot.text import Text
-from polyglot.detect.base import logger as polyglot_logger
-
-polyglot_logger.setLevel("ERROR")  # Close the warning from polyglot.
+from bs4 import BeautifulSoup
+import fasttext
+import re
 
 import _global
 
@@ -22,7 +21,9 @@ class DownloadManager:
         return query
 
     def _identify_lang(self, text):
-        return Text(text).language.code
+        model_path = os.path.join(_global.MODEL_PATH, 'lid.176.ftz')
+        model = fasttext.load_model(model_path)
+        return model.predict(text, k=2)
 
     def search_keyword(self, query, limit=10):
         langcode = self._identify_lang(query)
@@ -178,6 +179,88 @@ class DownloadManager:
         json_text = requests.Session().get(url=url, params=params).json()
         return json_text['query']['pages'][0]['extract']
 
+    def download_oldid_text(self, langcode: 'str', oldid: 'str'):
+        endpoint = f"https://{langcode}.wikipedia.org/w/api.php"
+        params = {
+            "action": "parse",
+            "format": "json",
+            "oldid": oldid,
+            "prop": "text",
+            "formatversion": "2"
+        }
+        json_text = requests.Session().get(url=endpoint, params=params).json()
+        return json_text['parse']['text']
+
+    def clean_oldid_text(self, text: 'str'):
+        soup = BeautifulSoup(text)
+
+        # Remove the table of content.
+        try:
+            soup.find('div', attrs={'class': 'toc'}).extract()
+        except AttributeError:
+            pass
+
+        # Remove the table for brief info at the top right of a page.
+        try:
+            soup.find('table', attrs={
+                'class': 'infobox biography vcard'
+            }).extract()
+        except AttributeError:
+            pass
+
+        try:
+            soup.find('table', attrs={'class': 'infobox'}).extract()
+        except AttributeError:
+            pass
+
+        # Remove the table for related items at the end of a page.
+        try:
+            soup.find('table', attrs={'class': 'navbox'}).extract()
+        except AttributeError:
+            pass
+
+        try:
+            for div in soup.find_all('div', attrs={'class': 'navbox'}):
+                div.extract()
+        except AttributeError:
+            pass
+
+        # Remove superscript reference number.
+        try:
+            for div in soup.find_all('sup', attrs={'class': 'reference'}):
+                div.extract()
+        except AttributeError:
+            pass
+
+        main_section = soup.find('div', attrs={'class': 'mw-parser-output'})
+
+        # Remove [edit] or [编辑] inside <h2> tags.
+        h2s = main_section.find_all(['h2'])
+        for h2 in h2s:
+            h2.find('a').extract()  # Remove edit or 编辑.
+            spans = h2.find_all('span',
+                                attrs={'class': 'mw-editsection-bracket'})
+            for span in spans:
+                span.extract()  # Remove [].
+
+        # Remove [edit] or [编辑] inside <h3> tags.
+        h3s = main_section.find_all(['h3'])
+        for h3 in h3s:
+            h3.find('a').extract()  # Remove edit or 编辑.
+            spans = h3.find_all('span',
+                                attrs={'class': 'mw-editsection-bracket'})
+            for span in spans:
+                span.extract()  # Remove [].
+
+        h2_h3_p_li = main_section.find_all(['h2', 'h3', 'p', 'li'])
+
+        for tag in h2_h3_p_li:
+            t = tag.get_text(strip=False)
+            #TODO: remove the empty line ahead.
+            t = re.sub(r'\[edit\]', '',
+                       t)  #TODO: can we only check this on h2 and h3?
+            yield (t)
+
     def save_text(self, text: 'str', title: 'str',
                   language_code: 'str') -> None:
         """Save downloaded text.
@@ -188,6 +271,29 @@ class DownloadManager:
         print(f'Text saved at {filepath}')
         return filepath
 
+    def url_parser(self, url: 'str'):
+        wiki_reg = ''
+        baike_reg = ''
+        if re.search(wiki_reg, url):
+            self.url_parser_wiki(url)
+        elif re.search(baike_reg, url):
+            self.url_parser_baike(url)
+
+    def url_parser_wiki(self, url: 'str'):
+        langcode_reg = '\/\/(.*)\.wikipedia\.org'
+        try:
+            langcode = re.search(langcode_reg, url).group(1)
+        except ValueError:
+            print('Invalid Wiki URL.')
+
+        oldid_reg = 'oldid='
+        if re.search(oldid_reg, url):
+            oldid = url.split(oldid_reg)[-1]
+        return langcode, oldid
+
+    def url_parser_baike(self, url: 'str'):
+        pass
+
 
 if __name__ == '__main__':
     # Tests
@@ -195,8 +301,8 @@ if __name__ == '__main__':
 
     ####################################################################
     # Test self.search_keyword()
-    q = 'steve jobs'
-    print(dm.search_keyword(q))
+    # q = 'steve jobs'
+    # print(dm.search_keyword(q))
     # keyword = 'Steve Jobs'
 
     ####################################################################
@@ -214,3 +320,8 @@ if __name__ == '__main__':
     # print('LaBSE languages:\n', sorted(languages))
     # filtered = dm.filter_option(options, languages)
     # print(f'Options filtered:\n', filtered)
+
+    ####################################################################
+    # Test self.url_parser_wiki()
+    wiki_url = 'https://en.wikipedia.org/w/index.php?title=Steve_Jobs&oldid=1095821758'
+    print(dm.url_parser_wiki(wiki_url))
