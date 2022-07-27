@@ -26,7 +26,9 @@ class Cutter:
         ----------
         document :
             The document to be segmented.
-        Return : 
+
+        Return
+        ------ 
             Segmented sentence per yield.
         """
         for paragraph in segmenter.process(document):
