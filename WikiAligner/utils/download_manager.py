@@ -5,8 +5,6 @@ from bs4 import BeautifulSoup
 import fasttext
 import re
 
-import _global
-
 
 class DownloadManager:
     def __init__(self, save_path, debug_mode=False) -> None:
@@ -297,6 +295,7 @@ class DownloadManager:
 
 if __name__ == '__main__':
     # Tests
+    import _global
     dm = DownloadManager(_global.CUTSPATH, debug_mode=False)
 
     ####################################################################

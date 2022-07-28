@@ -42,6 +42,11 @@ class Embedder:
             print('Embedding vector loaded!')
             yield embed
 
+    def _embed_check(self):
+        """Check if a doc's embedding exists already.
+        """
+        pass
+
     def _load_labse(self):
         labse_path = os.path.join(_global.MODEL_PATH, 'labse_model.pkl')
         print('Loading LaBSE model...')
