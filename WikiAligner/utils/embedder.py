@@ -1,8 +1,13 @@
 import os, sys
+
+BASE_DIR = os.path.dirname(os.path.dirname(
+    os.path.abspath(__file__)))  # BASE_DIR: WikiTrans base directory.
+sys.path.append(BASE_DIR)
+
 import pickle
 import numpy as np
 # import gensim
-import _global
+from utils import _global
 
 
 class Embedder:
