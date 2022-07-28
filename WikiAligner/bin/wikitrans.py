@@ -16,12 +16,12 @@ import json
 import pandas as pd
 import numpy as np
 import wikipedia
+from utils import _global
 from utils.download_manager import DownloadManager
 from utils.cutter import Cutter
 from utils.embedder import Embedder
 from utils.sim_calculator import SimCalculator
-from utils.res import Res
-from utils import _global
+# from utils.res import Res
 
 app = Flask(__name__)
 dm = DownloadManager(_global.CUTSPATH, _debug_mode)
