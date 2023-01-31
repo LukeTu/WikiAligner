@@ -45,27 +45,27 @@
          <div id="tool">
         <el-row :gutter="8"  style="align-items: center;">
           <el-col :span="8">
-            <div v-if="config.showAllData" class="grid-content slider-wrapper bg-purple" style="padding-right: 15px">
-              <span class="demonstration">Sim threshold:</span>
-              <el-slider :max=config.maxSim :min=config.minSim v-model="config.value1" :step="0.01" show-stops></el-slider>
+            <div  class="grid-content slider-wrapper bg-purple" style="padding-right: 15px">
+              <span class="demonstration" style="padding-right: 12px">Similarity Score Threshold:</span>
+              <el-slider :max=config.maxSim :min=config.minSim v-model="config.value1"  :format-tooltip="formatTooltip" :step="0.01" show-stops></el-slider>
             </div>
           </el-col>
 
-          <el-col :span="16">
+          <el-col :span="14">
          <el-tooltip
               class="box-item"
               effect="dark"
-              content="Downlaod"
+              content="Download"
               placement="top-start"
          >
-            <el-icon style="float: right;margin-right: 20px;margin-left: 10px" class="icon-self el-icon-download" @click="showAll">
+            <el-icon style="float: right;margin-right: 20px;margin-left: 10px" class="icon-self el-icon-download" @click="exportExcel">
               <download/>
             </el-icon>
          </el-tooltip>
               <el-tooltip
                 class="box-item"
                 effect="dark"
-                content="Show ALl Data"
+                content="Show All Data"
                 placement="top-start"
               >
             <el-icon style="float: right" :class="{'bg-blue':config.showAllData}" class="icon-self el-icon-data-line"
@@ -75,15 +75,18 @@
              </el-tooltip>
             <span style="float: right;vertical-align: middle;margin-right: 20px;margin-top: 4px;"></span>
           </el-col>
+
+
+
         </el-row>
       </div>
 
       <el-row class="main">
         <el-col :span="12">
-          <div class="box-title">{{ config.Text1 }} ----------{{ 'similarly: ' + config.simLisValue }}</div>
+          <div class="box-title">{{ config.Text1 }} ----------{{ 'similarly: ' +   Math.round(config.simLisValue * 100) / 100   }}</div>
           <div id="text1" class="grid-content bg-purple box-text" ref="text1"
                @mouseover="changeFlag(false)">
-                     <span v-for="items in config.fa_data.left" :key="items"
+                     <span v-for="items in config.fa_data.ST" :key="items"
                            @contextmenu.prevent="getTranlate('left',$event)">
                         <div v-if="items.content==='<br>' ">
                             <br>
@@ -107,7 +110,7 @@
           <div class="box-title">{{ config.Text2 }}</div>
           <div id="text2" class="grid-content bg-purple-light box-text" ref="text2"
                @mouseover="changeFlag(true)">
-                   <span v-for="items in config.fa_data.right" :key="items"
+                   <span v-for="items in config.fa_data.TT" :key="items"
                          @contextmenu.prevent="getTranlate('right',$event)">
                       <div v-if="items.content=='<br>' ">
                             <br>
@@ -136,7 +139,7 @@
 <script lang="ts">
 import {defineComponent, onMounted, reactive, toRefs, ref, watch, computed} from 'vue';
 import md5 from 'md5'
-import {getDemo, getAssociateWords, getRes, getLangList, getAnalyze} from '@/api/common'
+import {getDemo, getAssociateWords, getRes, getLangList, getAnalyze, getExcel} from '@/api/common'
 import {ElNotification} from 'element-plus'
 import router from "@/router";
 import { useRoute } from "vue-router";
@@ -152,8 +155,8 @@ export default defineComponent({
       routeData:[],
       temp: 0,
       drawer: false,
-      Text1: 'Text1',
-      Text2: 'Text2',
+      Text1: 'ST',
+      Text2: 'TT',
       maxSim: 10,
       minSim: 0,
       flag: true,
@@ -192,6 +195,10 @@ export default defineComponent({
     const showAll = () => {
       config.showAllData = !config.showAllData;
     };
+
+    const formatTooltip=(val:any)=>{
+          return val.toFixed(2);
+    }
     const submitForm = () => {
       let param={
         keyword:config.ruleForm.keyword,
@@ -215,7 +222,7 @@ export default defineComponent({
           let keys = Object.keys(response.result)
         config.fa_data = response.result;
         config.Text1 = keys[0];
-        config.Text2 = keys[3];
+        config.Text2 = keys[1];
         config.maxSim = response.result.maxSim;
         config.minSim = response.result.minSim;
         }else{
@@ -236,7 +243,7 @@ export default defineComponent({
       getDemo(data, end).then((res: any) => {
         config.translatedLanguage = res.trans_result[0].dst
         ElNotification({
-          title: 'Translated',
+          title: 'Translation',
           message: config.translatedLanguage,
           duration: 6000
         })
@@ -326,7 +333,17 @@ export default defineComponent({
         }
       }
     }
-
+      const exportExcel=()=>{
+      getExcel({keyword:config.ruleForm.keyword,language1:config.ruleForm.language1,language2:config.ruleForm.language2}).then((res:any)=>{
+         let url = window.URL.createObjectURL(
+            new Blob([res.data], { type: 'application/vnd.ms-excel' })
+          );
+          let link = document.createElement('a');
+          link.download = 'export.xlsx';
+          link.href = url;
+          link.click();
+      })
+      }
      const changeLang2=(val:any)=>{
      const temp=config.languageList;
           for (let i of temp){
@@ -367,6 +384,8 @@ export default defineComponent({
       doCopy,
       changeLang1,
       changeLang2,
+      exportExcel,
+      formatTooltip,
 
     }
   }
@@ -396,8 +415,8 @@ export default defineComponent({
         font-size: 14px;
         line-height: 44px;
         flex: 1;
-        overflow: hidden;
-        text-overflow: ellipsis;
+        //overflow: hidden;
+        //text-overflow: ellipsis;
         white-space: nowrap;
         margin-bottom: 0;
       }
