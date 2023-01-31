@@ -9,6 +9,11 @@ axios.interceptors.response.use(response => {
 	console.log(response)
 	const data = response.data;
 	let msg = data.message;
+			console.log(response)
+	  if ( response.request.responseType == 'blob') {
+      return response;
+    }
+
 	switch (data.code) {
 		case 401: //需要登录或Token无效
 			// securityUtil.logout();
@@ -72,6 +77,22 @@ axiosUtil.get = (url:string, params:any) => {
 		},
 	});
 };
+// get请求
+axiosUtil.blob = (url:string, params:any) => {
+
+	return axios({
+		method: "post",
+		url: `${baseUrl}${url}`,
+		params: params,
+		headers: {
+			'Content-Type':'application/json;charset=utf-8',
+
+		},
+		 responseType: 'blob'
+	});
+};
+//
+
 // post请求
 axiosUtil.post = (url:string, data:any) => {
 	return axios({

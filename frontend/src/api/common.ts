@@ -31,3 +31,9 @@ export const getAnalyze= (params:any)=>{
 export const getRes= (params:any)=>{
     return axiosUtil.postByJson('/getRes',params);
 }
+
+
+//对比结果
+export const getExcel= (params:any)=>{
+    return axiosUtil.blob('/export_to_excel',params);
+}

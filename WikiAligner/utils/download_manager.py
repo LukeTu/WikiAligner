@@ -1,42 +1,27 @@
 import os
 from typing import Union
 import requests
-from bs4 import BeautifulSoup
-import fasttext
-import re
+
+#TODO: change all URLs and parameters to the api to CAPITAL and save them in setting.py
+
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# BASE_DIR: WikiTrans base directory.
 
 
 class DownloadManager:
-    def __init__(self, save_path, debug_mode=False) -> None:
-        self.save_path = save_path
+    def __init__(self, debug_mode=False) -> None:
+        self.data_path = os.path.join(BASE_DIR, 'data')
+
+        if not os.path.exists(self.data_path):
+            os.makedirs(self.data_path)
+
         self.debug_mode = debug_mode
-        return None
 
     def get_query(self, prompt: 'str' = ''):
         if prompt:
             print(prompt)
         query = input() or None
         return query
-
-    def _identify_lang(self, text):
-        model_path = os.path.join(_global.MODEL_PATH, 'lid.176.ftz')
-        model = fasttext.load_model(model_path)
-        return model.predict(text, k=2)
-
-    def search_keyword(self, query, limit=10):
-        langcode = self._identify_lang(query)
-        endpoint = f"https://{langcode}.wikipedia.org/w/api.php"
-        params = {
-            "action": "query",
-            "format": "json",
-            "list": "search",
-            "srsearch": query,
-            "srlimit": limit,
-            "srprop": ""
-        }
-        json_text = requests.Session().get(url=endpoint, params=params).json()
-        keywords = [_['title'] for _ in json_text['query']['search']]
-        return keywords
 
     def get_langcode_title_options(
         self,
@@ -54,7 +39,7 @@ class DownloadManager:
         Return
         ------
         options[i][0] : str
-            Language code in ISO 639-1 (It can be tested using France: 639-1=fr, 639-2=fre/fra, 639-3=fra)
+            Language code.
         options[i][1] : str
             Wiki title
         (only if debug_mode == True) options[i][2] : str 
@@ -72,9 +57,7 @@ class DownloadManager:
         >>> print(result)
         [('en', 'Steve Jobs'), ('ace', 'Steve Jobs'), ('zh', '史蒂夫·乔布斯')]  
         """
-        langcode = self._identify_lang(keyword)
-        #TODO: 真的需要把keyword变成不同语言吗？这样就违反了keyword的英语一致性？
-        endpoint = f"https://{langcode}.wikipedia.org/w/api.php"
+        endpoint = "https://en.wikipedia.org/w/api.php"
         params = {
             "action": "query",
             "prop": "langlinks",
@@ -104,48 +87,13 @@ class DownloadManager:
             eng_option = (
                 'en', keyword,
                 f'https://en.wikipedia.org/wiki/{keyword.replace(" ","_")}')
-            # lang_dict['lang']: language code
-            # lang_dict['*']: Wiki title
-            # lang_dict['url']: URL to the Wiki page
+        # lang_dict['lang']: language code
+        # lang_dict['*']: Wiki title
+        # lang_dict['url']: URL to the Wiki page
 
         # The <endpoint> above doesn't return 'en'(English) option, so we have to insert it additionally.
         options.insert(0, eng_option)
-        return sorted(options, key=lambda option: option[0])
-
-    def filter_option(
-        self, options, languages: 'list'
-    ) -> Union['list[tuple[str, str]]', 'list[tuple[str, str, str]]']:
-        """Filter and keep options only within a language list user specifies.
-
-        Parameters
-        ----------
-        options :
-            Language code and Wiki title options.
-        languages :
-            Language code of languages user would like to keep.
-        
-        Return
-        ------
-        options_ :
-            Filtered option; the same format as <options>.
-        """
-        languages = sorted(languages)
-        #NOTE: <options> returned from self.get_langcode_title_options() is already sorted by the language code.
-        i = 0
-        j = 0
-        options_ = []
-
-        while i < len(languages) and j < len(options):
-            if languages[i] == options[j][0]:
-                options_.append(options[j])
-                i += 1
-                j += 1
-            elif languages[i] > options[j][0]:
-                j += 1
-            else:
-                i += 1
-
-        return options_
+        return options
 
     def download_text(self,
                       title: 'str' = '',
@@ -177,150 +125,10 @@ class DownloadManager:
         json_text = requests.Session().get(url=url, params=params).json()
         return json_text['query']['pages'][0]['extract']
 
-    def download_oldid_text(self, langcode: 'str', oldid: 'str'):
-        endpoint = f"https://{langcode}.wikipedia.org/w/api.php"
-        params = {
-            "action": "parse",
-            "format": "json",
-            "oldid": oldid,
-            "prop": "text",
-            "formatversion": "2"
-        }
-        json_text = requests.Session().get(url=endpoint, params=params).json()
-        return json_text['parse']['text']
-
-    def clean_oldid_text(self, text: 'str'):
-        soup = BeautifulSoup(text)
-
-        # Remove the table of content.
-        try:
-            soup.find('div', attrs={'class': 'toc'}).extract()
-        except AttributeError:
-            pass
-
-        # Remove the table for brief info at the top right of a page.
-        try:
-            soup.find('table', attrs={
-                'class': 'infobox biography vcard'
-            }).extract()
-        except AttributeError:
-            pass
-
-        try:
-            soup.find('table', attrs={'class': 'infobox'}).extract()
-        except AttributeError:
-            pass
-
-        # Remove the table for related items at the end of a page.
-        try:
-            soup.find('table', attrs={'class': 'navbox'}).extract()
-        except AttributeError:
-            pass
-
-        try:
-            for div in soup.find_all('div', attrs={'class': 'navbox'}):
-                div.extract()
-        except AttributeError:
-            pass
-
-        # Remove superscript reference number.
-        try:
-            for div in soup.find_all('sup', attrs={'class': 'reference'}):
-                div.extract()
-        except AttributeError:
-            pass
-
-        main_section = soup.find('div', attrs={'class': 'mw-parser-output'})
-
-        # Remove [edit] or [编辑] inside <h2> tags.
-        h2s = main_section.find_all(['h2'])
-        for h2 in h2s:
-            h2.find('a').extract()  # Remove edit or 编辑.
-            spans = h2.find_all('span',
-                                attrs={'class': 'mw-editsection-bracket'})
-            for span in spans:
-                span.extract()  # Remove [].
-
-        # Remove [edit] or [编辑] inside <h3> tags.
-        h3s = main_section.find_all(['h3'])
-        for h3 in h3s:
-            h3.find('a').extract()  # Remove edit or 编辑.
-            spans = h3.find_all('span',
-                                attrs={'class': 'mw-editsection-bracket'})
-            for span in spans:
-                span.extract()  # Remove [].
-
-        h2_h3_p_li = main_section.find_all(['h2', 'h3', 'p', 'li'])
-
-        for tag in h2_h3_p_li:
-            t = tag.get_text(strip=False)
-            #TODO: remove the empty line ahead.
-            t = re.sub(r'\[edit\]', '',
-                       t)  #TODO: can we only check this on h2 and h3?
-            yield (t)
-
     def save_text(self, text: 'str', title: 'str',
                   language_code: 'str') -> None:
-        """Save downloaded text.
-        """
-        filepath = os.path.join(self.save_path, f'{title}_{language_code}.txt')
+        filepath = os.path.join(self.data_path, f'{title}_{language_code}.txt')
         with open(filepath, 'w', encoding='utf-8') as f:
             f.writelines(text)
         print(f'Text saved at {filepath}')
         return filepath
-
-    def url_parser(self, url: 'str'):
-        wiki_reg = ''
-        baike_reg = ''
-        if re.search(wiki_reg, url):
-            self.url_parser_wiki(url)
-        elif re.search(baike_reg, url):
-            self.url_parser_baike(url)
-
-    def url_parser_wiki(self, url: 'str'):
-        langcode_reg = '\/\/(.*)\.wikipedia\.org'
-        try:
-            langcode = re.search(langcode_reg, url).group(1)
-        except ValueError:
-            print('Invalid Wiki URL.')
-
-        oldid_reg = 'oldid='
-        if re.search(oldid_reg, url):
-            oldid = url.split(oldid_reg)[-1]
-        return langcode, oldid
-
-    def url_parser_baike(self, url: 'str'):
-        pass
-
-
-if __name__ == '__main__':
-    # Tests
-    import _global
-    dm = DownloadManager(_global.CUTSPATH, debug_mode=False)
-
-    ####################################################################
-    # Test self.search_keyword()
-    # q = 'steve jobs'
-    # print(dm.search_keyword(q))
-    # keyword = 'Steve Jobs'
-
-    ####################################################################
-    # Test self.get_langcode_title_options()
-    # options = dm.get_langcode_title_options(keyword=keyword)
-    # print(f'Options of {keyword}: \n', sorted(languages))
-
-    ####################################################################
-    # Test language filter
-    # with open(os.path.join(_global.BASE_DIR, 'utils',
-    #                        'labse_languages.txt')) as f:
-    #     languages = f.readlines()
-    #     languages = [l.strip() for l in languages]
-
-    # print('LaBSE languages:\n', sorted(languages))
-    # filtered = dm.filter_option(options, languages)
-    # print(f'Options filtered:\n', filtered)
-
-    ####################################################################
-    # Test self.url_parser_wiki()
-    wiki_url = 'https://en.wikipedia.org/w/index.php?title=Steve_Jobs&oldid=1095821758'
-    print(dm.url_parser_wiki(wiki_url))

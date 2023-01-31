@@ -24,10 +24,10 @@ class Res:
             lTable = self.get_file_table(keyword, language_code1)
             rTable = self.get_file_table(keyword, language_code2)
             simTable = self.get_json_file(keyword, language_code1, language_code2)
-            # max_sim=simTable.max()['sim']
-            # min_sim=simTable.min()['sim']
-            max_sim = 0
-            min_sim = 0
+            print(simTable,'simTable')
+            max_sim=simTable.max()['sim'] if (len(simTable)>0) else 0
+            min_sim=simTable.min()['sim'] if (len(simTable)>0) else 0
+
             list_left = self.compute_left(lTable, simTable, language_code1, language_code2)
             list_right = self.compute_right(rTable, simTable, language_code1, language_code2)
             self.save_json(keyword, language_code1, language_code2, list_left, list_right,max_sim,min_sim)
@@ -45,15 +45,18 @@ class Res:
             data = json.load(rf)
             data_str = open('''%s\\%s_%s_%s.json''' % (self.data_path, keyword, language_code1, language_code2)).read()
             df = pd.read_json(data_str, orient='records')
-            return df if df.size==0 else []
+            return df if df.size!=0 else []
 
 
     def compute_left(self, l_table, sim_table, language_code1, language_code2):
         list_left = []
         for index, row in l_table.iterrows():
-            sTemp = sim_table[sim_table['id_' + language_code1] == index]
-            recent_date = sTemp['sim'].max()
-            sim_row = sTemp[sTemp['sim'] == recent_date].reset_index(drop=True)
+            if len(sim_table)>0:
+                sTemp = sim_table[sim_table['id_' + language_code1] == index]
+                recent_date = sTemp['sim'].max()
+                sim_row = sTemp[sTemp['sim'] == recent_date].reset_index(drop=True)
+            else:
+                sim_row=[]
             if len(sim_row) > 0:
                 list_left.append(
                     {"content": row['text'], 'id_L': index, 'id_R': sim_row.at[0, 'id_' + language_code2],
@@ -65,9 +68,13 @@ class Res:
     def compute_right(self, rTable, simTable, language_code1, language_code2):
         list_right = []
         for index, row in rTable.iterrows():
-            s_temp = simTable[simTable['id_' + language_code2] == index]
-            recent_date = s_temp['sim'].max()
-            sim_row = s_temp[s_temp['sim'] == recent_date].reset_index(drop=True)
+            if len(simTable) > 0:
+                s_temp = simTable[simTable['id_' + language_code2] == index]
+                recent_date = s_temp['sim'].max()
+                sim_row = s_temp[s_temp['sim'] == recent_date].reset_index(drop=True)
+            else:
+                sim_row = []
+
             if len(sim_row) > 0:
                 list_right.append(
                     {"content": row['text'], 'id_L': sim_row.at[0, 'id_' + language_code1], 'id_R': index,
@@ -77,7 +84,8 @@ class Res:
         return list_right
 
     def save_json(self, keyword, language_code1, language_code2, list_left, list_right,max_sim,min_sim):
-        res = {'maxSim':max_sim,'minSim':min_sim,'left': list_left, 'right': list_right}
+
+        res = {'maxSim':max_sim,'minSim':min_sim,'ST': list_left, 'TT': list_right}
         res2 = json.dumps(res, cls=NpEncoder)
         f = codecs.open('''%s\\%s_%s_%s_res.json''' % (self.data_path, keyword, language_code1, language_code2), 'w',
                         'utf-8')
