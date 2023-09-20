@@ -90,7 +90,7 @@ $ python WikiAligner/WikiAligner/bin/wikitrans.py
   3. Debugging Wiki parse API... (might get the plain text from HTML with beautifulsoup)
 
 
-
+Colab version coming soon...
 ## Tasks
 
 - [ ] Front-end interface optimization [*]
