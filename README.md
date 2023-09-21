@@ -41,7 +41,7 @@ $ conda install -c conda-forge faiss-gpu
 
 While according to faiss document, the GPU version is not available other than Linux, so that here we tested with the CPU version.
 
-To run the back-end, the LABSE model has to be downloaded and compressed first:
+To run the back-end, the LABSE model (https://tfhub.dev/google/LaBSE/2) has to be downloaded and compressed first:
 
 ```shell
 $ python WikiAligner/WikiAligner/utils/comresser.py
