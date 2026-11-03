@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WikiAligner</title>
+<link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">WikiAligner <span class="version" id="version"></span></div>
+  <nav class="tabs" role="tablist">
+    <button role="tab" data-view="align" class="active" data-i18n="tab.align">对齐</button>
+    <button role="tab" data-view="history" data-i18n="tab.history">修订历史</button>
+    <button role="tab" data-view="runs" data-i18n="tab.runs">记录</button>
+    <button role="tab" data-view="settings" data-i18n="tab.settings">设置</button>
+  </nav>
+  <div class="seg small" id="ui-lang" role="radiogroup" aria-label="Interface language">
+    <button type="button" data-lang="zh">中</button>
+    <button type="button" data-lang="en">EN</button>
+    <button type="button" data-lang="bi">中/EN</button>
+  </div>
+</header>
+
+<main>
+  <!-- ============================================================ ALIGN -->
+  <section class="view active" id="view-align">
+    <aside class="sidebar">
+      <div class="source-card" data-side="left"></div>
+      <div class="swap-row">
+        <button class="ghost small" id="swap" data-i18n="btn.swap">⇅ 交换左右</button>
+        <button class="ghost small" id="same-article" data-i18n="btn.sameArticle">右侧用同一条目（比较修订）</button>
+        <button class="ghost small" id="same-date" data-i18n="btn.sameDate">右侧用相同日期</button>
+      </div>
+      <div class="source-card" data-side="right"></div>
+
+      <details class="options" id="options">
+        <summary data-i18n="opt.title">对齐选项</summary>
+        <label><span data-i18n="opt.model">模型</span><select id="opt-model"></select></label>
+        <label><span data-i18n="opt.granularity">切分粒度</span>
+          <select id="opt-granularity">
+            <option value="sentence" data-i18n="gran.sentence">句子</option>
+            <option value="clause" data-i18n="gran.clause">分句（更细，长句拆开）</option>
+            <option value="paragraph" data-i18n="gran.paragraph">段落</option>
+          </select></label>
+        <label><span data-i18n="opt.strategy">匹配方式</span>
+          <select id="opt-strategy">
+            <option value="greedy" data-i18n="strat.greedy">一对一（默认）</option>
+            <option value="many" data-i18n="strat.many">允许一对多（拆句、合句）</option>
+            <option value="mutual" data-i18n="strat.mutual">仅互为最佳（更严格）</option>
+          </select></label>
+        <fieldset>
+          <legend data-i18n="opt.include">包含内容</legend>
+          <label class="check"><input type="checkbox" id="opt-captions" checked> <span data-i18n="inc.captions">图片说明</span></label>
+          <label class="check"><input type="checkbox" id="opt-lists" checked> <span data-i18n="inc.lists">列表</span></label>
+          <label class="check"><input type="checkbox" id="opt-tables"> <span data-i18n="inc.tables">表格</span></label>
+          <label class="check"><input type="checkbox" id="opt-infobox"> <span data-i18n="inc.infobox">信息框</span></label>
+          <label class="check"><input type="checkbox" id="opt-headings"> <span data-i18n="inc.headings">对齐标题</span></label>
+        </fieldset>
+        <div class="row2">
+          <label><span>k</span><input type="number" id="opt-k" min="1" max="16" value="4"></label>
+          <label><span data-i18n="opt.minMargin">最低 margin</span><input type="number" id="opt-margin" min="0.8" max="2" step="0.01" value="1.0"></label>
+        </div>
+      </details>
+
+      <button class="primary wide" id="run" data-i18n="btn.run">开始对齐</button>
+      <div class="progress" id="run-progress" hidden></div>
+    </aside>
+
+    <div class="results" id="results">
+      <div class="empty" id="empty">
+        <h2 data-i18n="empty.title">选择两篇文本，找出彼此对应的句子</h2>
+        <p data-i18n="empty.body">左右两侧可以是同一条目的不同语言版本（找译文），也可以是同一条目的两个历史版本（看改动）。历史版本可按日期或修订号指定。</p>
+        <div class="examples">
+          <button class="ghost" data-example="nemtsov" data-i18n="ex.nemtsov">示例：涅姆佐夫遇刺 · 英文 / 俄文 · 2015-03-10</button>
+          <button class="ghost" data-example="nemtsov-rev" data-i18n="ex.nemtsovRev">示例：同一英文条目 · 2015-03-10 / 现在</button>
+        </div>
+      </div>
+
+      <div class="result" id="result" hidden>
+        <div class="toolbar">
+          <div class="stats" id="stats"></div>
+          <div class="filters">
+            <label class="inline"><span data-i18n="flt.score">按</span>
+              <select id="flt-score">
+                <option value="cos" data-i18n="flt.cos">余弦相似度</option>
+                <option value="margin">margin</option>
+              </select></label>
+            <input type="range" id="flt-threshold" min="0" max="1" step="0.01" value="0.7" aria-label="threshold">
+            <output id="flt-value">0.70</output>
+            <button type="button" class="link small" id="flt-reset" hidden data-i18n="flt.reset">恢复推荐值</button>
+            <label class="check"><input type="checkbox" id="flt-ids"> <span data-i18n="flt.ids">编号</span></label>
+            <label class="check"><input type="checkbox" id="flt-unmatched"> <span data-i18n="flt.unmatched">只看未对齐</span></label>
+            <div class="menu">
+              <button class="ghost small" id="export-btn" data-i18n="btn.export">导出 ▾</button>
+              <div class="menu-list" id="export-menu" hidden>
+                <button data-fmt="xlsx">Excel (.xlsx)</button>
+                <button data-fmt="csv">CSV</button>
+                <button data-fmt="json">JSON</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="panes">
+          <div class="pane" id="pane-left"><div class="pane-head" id="head-left"></div><div class="pane-body" id="body-left"></div></div>
+          <div class="pane" id="pane-right"><div class="pane-head" id="head-right"></div><div class="pane-body" id="body-right"></div></div>
+        </div>
+        <div class="legend" id="legend"></div>
+        <div class="drawer" id="drawer" hidden></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================ HISTORY -->
+  <section class="view" id="view-history">
+    <div class="page">
+      <div class="history-form">
+        <input id="h-lang" class="lang-input" value="en" list="lang-list" aria-label="language">
+        <div class="suggest-wrap grow">
+          <input id="h-title" placeholder="条目标题" data-i18n-placeholder="ph.title" autocomplete="off">
+          <div class="suggest" hidden></div>
+        </div>
+        <label class="inline"><span data-i18n="hist.before">早于</span><input type="date" id="h-start"></label>
+        <button class="primary" id="h-load" data-i18n="btn.loadHistory">查看修订历史</button>
+      </div>
+      <p class="hint" data-i18n="hist.hint">勾选两个版本可直接比较；“内容翻译”标记表示该次编辑用维基百科的内容翻译工具完成，是判断翻译方向的有力线索。</p>
+      <div class="history-actions" id="h-actions" hidden>
+        <span id="h-selected"></span>
+        <button class="primary small" id="h-compare" data-i18n="btn.compare">比较所选两个版本</button>
+        <button class="ghost small" id="h-to-left" data-i18n="btn.toLeft">设为左侧</button>
+        <button class="ghost small" id="h-to-right" data-i18n="btn.toRight">设为右侧</button>
+      </div>
+      <div class="table-wrap"><table class="history" id="h-table"><thead><tr>
+        <th></th><th data-i18n="hist.time">时间 (UTC)</th><th data-i18n="hist.user">编辑者</th>
+        <th data-i18n="hist.size">大小</th><th data-i18n="hist.comment">编辑摘要</th><th></th>
+      </tr></thead><tbody></tbody></table></div>
+      <button class="ghost" id="h-more" hidden data-i18n="btn.more">加载更多</button>
+    </div>
+  </section>
+
+  <!-- ============================================================ RUNS -->
+  <section class="view" id="view-runs">
+    <div class="page">
+      <h2 data-i18n="runs.title">保存的对齐结果</h2>
+      <p class="hint" data-i18n="runs.hint">每次对齐都会自动保存在本机，打开时无需重新计算。</p>
+      <div class="table-wrap"><table class="runs" id="runs-table"><thead><tr>
+        <th data-i18n="runs.time">时间</th><th data-i18n="runs.left">左侧</th><th data-i18n="runs.right">右侧</th>
+        <th data-i18n="runs.pairs">句对</th><th></th>
+      </tr></thead><tbody></tbody></table></div>
+    </div>
+  </section>
+
+  <!-- ============================================================ SETTINGS -->
+  <section class="view" id="view-settings">
+    <div class="page medium">
+      <h2 data-i18n="tab.settings">设置</h2>
+      <form id="settings-form" class="settings">
+        <section class="model-section">
+          <h3 data-i18n="set.models">句向量模型</h3>
+          <p class="hint" data-i18n="set.modelsIntro"></p>
+          <div class="table-wrap"><table class="models-table" id="models-table"><thead><tr>
+            <th data-i18n="m.default">默认</th><th data-i18n="m.model">模型</th><th data-i18n="m.f1">本机 F1</th>
+            <th data-i18n="m.speed">速度</th><th data-i18n="m.size">下载</th><th data-i18n="m.langs">语言</th>
+            <th data-i18n="m.license">许可</th><th data-i18n="m.status">状态</th>
+          </tr></thead><tbody></tbody></table></div>
+          <details class="method"><summary data-i18n="m.method">本机评测方法</summary><p id="bench-method" class="hint"></p></details>
+        </section>
+        <label><span data-i18n="set.custom">其他模型（每行一个 Hugging Face 模型名）</span>
+          <textarea name="custom_models" rows="2" placeholder="sentence-transformers/distiluse-base-multilingual-cased-v2"></textarea></label>
+        <label><span data-i18n="set.mirror">模型下载地址</span>
+          <select name="hf_endpoint">
+            <option value="" data-i18n="set.mirrorDefault">huggingface.co（默认）</option>
+            <option value="https://hf-mirror.com" data-i18n="set.mirrorCn">hf-mirror.com（中国大陆可用的镜像）</option>
+          </select>
+          <small data-i18n="set.restart">更改后需重启应用生效。</small></label>
+        <label><span data-i18n="set.proxy">网络代理（访问维基百科用，留空则使用系统代理）</span>
+          <input name="proxy" placeholder="http://127.0.0.1:7890"></label>
+        <label><span data-i18n="set.exportDir">导出文件夹（留空为“下载/WikiAligner”）</span>
+          <input name="export_dir" id="set-export-dir"></label>
+        <div class="cache-row"><span id="cache-size"></span><button type="button" class="ghost small" id="clear-cache" data-i18n="btn.clearCache">清除网页缓存</button></div>
+        <button class="primary" type="submit" data-i18n="btn.save">保存设置</button>
+      </form>
+    </div>
+  </section>
+</main>
+
+<datalist id="lang-list"></datalist>
+<div class="toast" id="toast" hidden></div>
+
+<template id="source-card">
+  <div class="card-head">
+    <h3 class="side-label"></h3>
+    <div class="seg" role="radiogroup">
+      <button type="button" data-type="wiki" class="on" data-i18n="src.wiki">维基百科</button>
+      <button type="button" data-type="text" data-i18n="src.text">文本 / 文件</button>
+    </div>
+  </div>
+  <div class="src-wiki">
+    <div class="row">
+      <input class="lang-input" list="lang-list" aria-label="language">
+      <div class="suggest-wrap grow">
+        <input class="title-input" autocomplete="off" placeholder="条目标题" data-i18n-placeholder="ph.title">
+        <div class="suggest" hidden></div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="seg small rev-mode">
+        <button type="button" data-mode="latest" class="on" data-i18n="rev.latest">最新</button>
+        <button type="button" data-mode="date" data-i18n="rev.date">按日期</button>
+        <button type="button" data-mode="revid" data-i18n="rev.revid">修订号</button>
+      </div>
+      <input type="date" class="rev-date" hidden>
+      <input type="number" class="rev-id" placeholder="revid" hidden>
+    </div>
+    <div class="row variant-row" hidden>
+      <span class="muted" data-i18n="src.variant">字形</span>
+      <select class="variant">
+        <option value="" data-i18n="var.orig">原文（不转换）</option>
+      </select>
+    </div>
+    <div class="page-meta muted"></div>
+    <div class="row links-row" hidden>
+      <select class="langlinks"></select>
+    </div>
+  </div>
+  <div class="src-text" hidden>
+    <div class="row">
+      <input class="lang-input text-lang" list="lang-list" aria-label="language">
+      <input class="text-name grow" placeholder="名称" data-i18n-placeholder="ph.name">
+      <button type="button" class="ghost small open-file" data-i18n="btn.openFile">打开文件…</button>
+      <input type="file" class="file-input" accept=".txt,.md,.docx" hidden>
+    </div>
+    <textarea class="text-body" rows="7" placeholder="粘贴文本；空行分隔段落" data-i18n-placeholder="ph.text"></textarea>
+  </div>
+</template>
+
+<script type="module" src="/static/app.js"></script>
+</body>
+</html>

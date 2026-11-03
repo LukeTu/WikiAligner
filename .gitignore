@@ -1,0 +1,12 @@
+.venv/
+__pycache__/
+*.pyc
+build/
+dist/
+.pytest_cache/
+benchmarks/
+wikialigner/bundled_models/
+.claude/
+*.dmg
+*.zip
+.DS_Store

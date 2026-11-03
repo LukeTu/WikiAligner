@@ -1,0 +1,99 @@
+name: build
+
+# Pushing a tag such as v0.2.0 builds both installers, tests them on real Mac and Windows
+# machines, and publishes a GitHub Release. Running it by hand builds and tests only.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-15, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync --python 3.12
+      - run: uv run pytest -q
+
+  package-macos:
+    needs: test
+    runs-on: macos-15   # Apple silicon
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync --python 3.12 --no-dev --group build
+      - run: uv run --no-dev --group build python packaging/fetch_model.py
+      - run: uv run --no-dev --group build pyinstaller packaging/wikialigner.spec --noconfirm --log-level WARN
+      - run: bash packaging/make_dmg.sh
+      - name: Install from the disk image and test the installed app
+        env:
+          WIKIALIGNER_DMG: file://${{ github.workspace }}/dist/WikiAligner-macOS-arm64.dmg
+          WIKIALIGNER_INSTALL_DIR: ${{ runner.temp }}/apps
+          WIKIALIGNER_NO_OPEN: "1"
+        run: |
+          bash packaging/install_mac.sh
+          python3 packaging/smoke_test.py "$WIKIALIGNER_INSTALL_DIR/WikiAligner.app/Contents/MacOS/WikiAligner" --offline-model
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos
+          path: dist/WikiAligner-macOS-arm64.dmg
+          compression-level: 0
+
+  package-windows:
+    needs: test
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync --python 3.12 --no-dev --group build
+      - run: uv run --no-dev --group build python packaging/fetch_model.py
+      - run: uv run --no-dev --group build pyinstaller packaging/wikialigner.spec --noconfirm --log-level WARN
+      - name: Build the installer
+        shell: pwsh
+        run: |
+          choco install innosetup -y --no-progress
+          $version = (Select-String -Path wikialigner/__init__.py -Pattern '"(.+)"').Matches[0].Groups[1].Value
+          $iscc = (Get-ChildItem "${env:ProgramFiles(x86)}\Inno Setup *\ISCC.exe", "$env:ProgramFiles\Inno Setup *\ISCC.exe" -ErrorAction SilentlyContinue | Select-Object -First 1).FullName
+          & $iscc "/DAppVersion=$version" packaging\wikialigner.iss
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Install silently and test the installed app
+        shell: pwsh
+        run: |
+          $p = Start-Process dist\WikiAligner-Windows-x64-Setup.exe -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES","/NORESTART" -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw "installer exit code $($p.ExitCode)" }
+          python packaging/smoke_test.py "$env:LOCALAPPDATA\Programs\WikiAligner\WikiAligner.exe" --offline-model
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: dist/WikiAligner-Windows-x64-Setup.exe
+          compression-level: 0
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [package-macos, package-windows]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: assets
+          merge-multiple: true
+      - name: Make the AI handoff package
+        run: git archive --format=zip --prefix=WikiAligner/ -o assets/WikiAligner-handoff.zip HEAD
+      - uses: softprops/action-gh-release@v2
+        with:
+          body_path: packaging/release_notes.md
+          files: |
+            assets/WikiAligner-macOS-arm64.dmg
+            assets/WikiAligner-Windows-x64-Setup.exe
+            assets/WikiAligner-handoff.zip
+            packaging/install_mac.sh
+            packaging/install_windows.ps1
