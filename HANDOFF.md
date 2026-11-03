@@ -67,7 +67,7 @@ Show the person how to run the built-in example: on the Align tab, click the fir
 
 - Do not disable security features (Gatekeeper, SmartScreen, antivirus) system-wide. Approve only this app, and only with the person's agreement.
 - Do not enter passwords or API keys. The app needs none.
-- User data is kept outside this folder (see "数据存放位置" in `README.md`). Do not delete it when reinstalling.
+- User data is kept outside this folder (see "Where data is stored" in `README.md`). Do not delete it when reinstalling.
 
 ## Building the installers
 
