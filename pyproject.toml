@@ -1,6 +1,6 @@
 [project]
 name = "wikialigner"
-version = "0.2.0"
+version = "0.2.1"
 description = "Desktop tool for locating translated sentences across Wikipedia language editions and revisions."
 readme = "README.md"
 requires-python = ">=3.10,<3.14"

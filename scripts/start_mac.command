@@ -5,7 +5,7 @@
 cd "$(dirname "$0")/.." || exit 1
 export PATH="$HOME/.local/bin:$PATH"
 if ! command -v uv >/dev/null 2>&1; then
-  echo "Installing uv (Python package manager)…"
+  echo "Installing uv (Python package manager)..."
   curl -LsSf https://astral.sh/uv/install.sh | sh || { echo "Could not install uv."; read -r -p "Press Enter to close"; exit 1; }
   export PATH="$HOME/.local/bin:$PATH"
 fi

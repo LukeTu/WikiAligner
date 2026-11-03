@@ -18,14 +18,14 @@ mkdir -p "$dest"
 
 work="$(mktemp -d)"
 mnt="$work/mnt"
-cleanup() { hdiutil detach -quiet "$mnt" 2>/dev/null || true; rm -rf "$work"; }
+cleanup() { status=$?; hdiutil detach -quiet "$mnt" 2>/dev/null || true; rm -rf "$work"; exit "$status"; }
 trap cleanup EXIT
 
-echo "Downloading WikiAligner (under 1 GB)…"
+echo "Downloading WikiAligner (under 1 GB)..."
 curl -fL --retry 3 --progress-bar -o "$work/WikiAligner.dmg" "$url"
 mkdir -p "$mnt"
 hdiutil attach -quiet -nobrowse -readonly -mountpoint "$mnt" "$work/WikiAligner.dmg"
-echo "Installing to $dest…"
+echo "Installing to ${dest}..."
 rm -rf "$dest/WikiAligner.app"
 ditto "$mnt/WikiAligner.app" "$dest/WikiAligner.app"
 xattr -dr com.apple.quarantine "$dest/WikiAligner.app" 2>/dev/null || true
