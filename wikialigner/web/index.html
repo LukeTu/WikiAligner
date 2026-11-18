@@ -47,8 +47,11 @@
           <select id="opt-strategy">
             <option value="greedy" data-i18n="strat.greedy">一对一（默认）</option>
             <option value="many" data-i18n="strat.many">允许一对多（拆句、合句）</option>
+            <option value="ordered" data-i18n="strat.ordered">按语序对齐（拆合句，实验）</option>
+            <option value="span" data-i18n="strat.span">句组候选（乱序与复用，实验）</option>
             <option value="mutual" data-i18n="strat.mutual">仅互为最佳（更严格）</option>
           </select></label>
+        <p class="muted" data-i18n="opt.strategyHelp">顺序基本一致可选按语序。分散或重复使用的片段可试句组候选。</p>
         <fieldset>
           <legend data-i18n="opt.include">包含内容</legend>
           <label class="check"><input type="checkbox" id="opt-captions" checked> <span data-i18n="inc.captions">图片说明</span></label>

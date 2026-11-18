@@ -87,6 +87,7 @@ class RunStore:
             "id": result["id"], "created": result["created"], "mode": result["mode"],
             "left": _brief(result["left"]), "right": _brief(result["right"]),
             "model": result["model"]["id"], "stats": result["stats"],
+            "score_unit": result.get("score_unit", "sentence"),
         }
         (self.dir / f"{result['id']}.meta.json").write_text(json.dumps(summary, ensure_ascii=False), encoding="utf-8")
 

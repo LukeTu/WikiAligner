@@ -11,7 +11,15 @@ from openpyxl.styles import Alignment, Font, PatternFill
 
 FORMATS = ("xlsx", "csv", "json")
 
-_REASONS = {"weak": "below threshold", "taken": "best counterpart paired elsewhere"}
+_REASONS = {
+    "weak": "below threshold",
+    "taken": "best counterpart paired elsewhere",
+    "order": "excluded by ordered path or group threshold",
+    "span": "not retained by span candidate selection",
+    "no_candidate": "no comparable segment remains",
+}
+_GROUP_COLUMNS = ["group_id", "left_ids", "right_ids", "left_text", "right_text",
+                  "cosine", "margin", "alignment_score", "ranking_score", "type", "status"]
 
 
 def _doc_label(doc: dict) -> str:
@@ -38,6 +46,7 @@ def pair_rows(result: dict) -> list[dict]:
         rows.append({
             "left_id": a["id"], "left_section": a["section"], "left_text": a["text"],
             "right_id": b["id"], "right_section": b["section"], "right_text": b["text"],
+            **({"group_id": p.get("group_id"), "score_unit": "group"} if result.get("score_unit") == "group" else {}),
             "cosine": p["cos"], "margin": p["margin"], "char_ratio": p.get("char_ratio"), "type": p["kind"],
         })
     return rows
@@ -51,6 +60,16 @@ def unmatched_rows(result: dict, side: str) -> list[dict]:
             for u in result[key]]
 
 
+def group_rows(result: dict, groups: list[dict]) -> list[dict]:
+    return [{"group_id": g["id"], "left_ids": ",".join(map(str, g["src_ids"])),
+             "right_ids": ",".join(map(str, g["tgt_ids"])),
+             "left_text": " ".join(result["left"]["segments"][i]["text"] for i in g["src_ids"]),
+             "right_text": " ".join(result["right"]["segments"][j]["text"] for j in g["tgt_ids"]),
+             "cosine": g["cos"], "margin": g["margin"], "alignment_score": g.get("alignment_score"),
+             "ranking_score": g.get("ranking_score"), "type": g["kind"],
+             "status": g.get("status", "accepted")} for g in groups]
+
+
 def metadata_rows(result: dict) -> list[tuple[str, str]]:
     rows = [
         ("Created", result["created"]),
@@ -61,7 +80,12 @@ def metadata_rows(result: dict) -> list[tuple[str, str]]:
         ("Right", _doc_label(result["right"])),
         ("Right URL", result["right"].get("url", "")),
         ("Model", result["model"]["id"]),
+        ("Model runtime", json.dumps(result["model"], ensure_ascii=False)),
+        ("Alignment algorithm", json.dumps(result.get("alignment_algorithm", {}), ensure_ascii=False)),
+        ("Score unit", result.get("score_unit", "sentence")),
     ]
+    if result.get("score_unit") == "group":
+        rows.append(("Expanded links", "Sentence links derived from each group. Scores refer to the whole group."))
     rows += [(f"Option: {k}", str(v)) for k, v in result["options"].items()]
     rows += [(f"Stat: {k}", str(v)) for k, v in result["stats"].items()]
     if result["left"]["source"] == "wiki" or result["right"]["source"] == "wiki":
@@ -84,9 +108,14 @@ def export(result: dict, fmt: str, directory: Path) -> Path:
     if fmt == "json":
         path.write_text(json.dumps(result, ensure_ascii=False, indent=1), encoding="utf-8")
     elif fmt == "csv":
-        rows = pair_rows(result)
+        if result.get("score_unit") == "group":
+            rows = group_rows(result, result["groups"] + result.get("low_confidence_groups", []))
+            columns = _GROUP_COLUMNS
+        else:
+            rows = pair_rows(result)
+            columns = list(rows[0]) if rows else ["left_text", "right_text"]
         with path.open("w", newline="", encoding="utf-8-sig") as f:  # BOM so Excel reads UTF-8
-            w = csv.DictWriter(f, fieldnames=list(rows[0].keys()) if rows else ["left_text", "right_text"])
+            w = csv.DictWriter(f, fieldnames=columns)
             w.writeheader()
             w.writerows(rows)
     else:
@@ -100,11 +129,11 @@ def _write_xlsx(result: dict, path: Path) -> None:
     head_fill = PatternFill("solid", fgColor="0D6A61")
     wrap = Alignment(wrap_text=True, vertical="top")
 
-    def sheet(ws, rows: list[dict], widths: dict[str, int]):
-        if not rows:
+    def sheet(ws, rows: list[dict], widths: dict[str, int], columns=None):
+        if not rows and columns is None:
             ws.append(["(none)"])
             return
-        cols = list(rows[0].keys())
+        cols = columns if columns is not None else list(rows[0])
         ws.append(cols)
         for c in ws[1]:
             c.font, c.fill = head_font, head_fill
@@ -119,10 +148,19 @@ def _write_xlsx(result: dict, path: Path) -> None:
         ws.freeze_panes = "A2"
 
     ws = wb.active
-    ws.title = "Aligned pairs"
+    group_widths = {"left_text": 60, "right_text": 60}
+    if result.get("score_unit") == "group":
+        ws.title = "Alignment groups"
+        sheet(ws, group_rows(result, result["groups"]), group_widths, _GROUP_COLUMNS)
+        ws = wb.create_sheet("Expanded links")
+    else:
+        ws.title = "Aligned pairs"
     sheet(ws, pair_rows(result), {"left_text": 60, "right_text": 60, "left_section": 18, "right_section": 18})
     sheet(wb.create_sheet("Unmatched left"), unmatched_rows(result, "left"), {"text": 80, "section": 20, "reason": 30})
     sheet(wb.create_sheet("Unmatched right"), unmatched_rows(result, "right"), {"text": 80, "section": 20, "reason": 30})
+    if result.get("low_confidence_groups"):
+        sheet(wb.create_sheet("Low confidence groups"), group_rows(result, result["low_confidence_groups"]),
+              group_widths, _GROUP_COLUMNS)
     meta = wb.create_sheet("About")
     for k, v in metadata_rows(result):
         meta.append([k, v])

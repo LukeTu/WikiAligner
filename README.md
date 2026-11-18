@@ -6,6 +6,12 @@ Find corresponding sentences across Wikipedia language editions, or across two r
 
 **[Download the latest release / 下载最新版本](https://github.com/LukeTu/WikiAligner/releases/latest)** · [English](#english) · [中文](#中文)
 
+**New in the source / 源码更新**
+
+Two experimental group modes handle splits and merges in sequence, or find reordered and reused spans. The current installers are v0.2.1. To try the new modes, [run from source](#run-from-source).
+
+新增两种实验模式，可按语序对齐拆合句，也可寻找乱序或重复使用的片段。当前安装包为 v0.2.1，可[从源码运行](#从源码运行)体验新模式。
+
 ## Paper / 论文
 
 WikiAligner was introduced in this paper. The method and the planned improvements described there are the basis of this version.
@@ -43,10 +49,10 @@ WikiAligner 最早发表于下面这篇论文。这一版的方法和新增功�
 - **Revision history**: lists revisions with time, editor, size change, summary and tags, and marks edits made with Wikipedia's Content Translation tool. Tick two revisions to compare them.
 - **First-appearance tracing**: for a sentence pair, searches each article's history for the revision where each sentence first appeared and compares the dates, which gives a clue to translation direction. Small wording changes can optionally be allowed.
 - **Your own text**: either side can be pasted text or a .txt, .md or .docx file.
-- **Export**: Excel (pairs, unmatched sentences on each side, metadata), CSV or JSON. Metadata records revision IDs, links, model, parameters and the CC BY-SA licence note.
+- **Export**: Excel, CSV or JSON. In group modes, Excel lists accepted groups first, with separate sheets for expanded sentence links and any below-threshold candidates. CSV writes one row per group with its review status. Excel and JSON record revision IDs, links, model, parameters and the CC BY-SA licence note.
 - **Saved results**: every result is saved on your computer and reopens without recomputing.
 - **Bilingual interface**: switch between 中, EN and 中/EN at the top right. 中/EN shows Chinese and English together and is the default.
-- **Model choice**: nine models in five groups. The Settings page compares them, and each result opens with a threshold recommended for its model.
+- **Model choice**: nine models in five groups. The Settings page compares them. Sentence-pair modes offer model-specific recommended display thresholds.
 
 ### Install
 
@@ -156,7 +162,10 @@ wikialigner/
   segment.py    multilingual sentence and clause segmentation
   models.py     model list, loading, vector cache
   model_benchmark.json  local benchmark results
-  align.py      margin scoring (Artetxe & Schwenk 2019) and three matching strategies
+  align.py      margin scoring and matching entry points
+  ordered.py    shared span-vector utilities and first ordered decoder
+  ordered_refined.py  in-order split/merge alignment with group scoring
+  span_mining.py  order-free reusable span candidates (experimental)
   pipeline.py   from two sources to one alignment result
   history.py    first-appearance tracing (bisects the revision history)
   export.py     Excel, CSV and JSON export
@@ -172,7 +181,8 @@ packaging/      installers, install scripts, smoke test
 ### Known limitations
 
 - Pairs are candidates for human review. High similarity shows that two sentences say the same thing, not that one was translated from the other.
-- Recommended thresholds come from the news-corpus test above and have not been calibrated against a Wikipedia gold standard. Custom models have no benchmark and start at cosine ≥ 0.70.
+- The model-specific thresholds for sentence pairs come from the news-corpus test above. Custom models start at cosine ≥ 0.70 in sentence-pair mode.
+- The two group modes are experimental. They can join adjacent sentences that warrant separate matches. Their thresholds have yet to be calibrated against a Wikipedia gold standard. In group mode, first-appearance tracing works on individual sentences in a group.
 - First-appearance tracing assumes a sentence stays once added; if it was removed and re-added, the result is one of the times it appeared. Each search reads 10–15 historical versions and usually takes 30–60 seconds.
 - Old revisions are rendered by Wikipedia with today's templates, so they can differ slightly from what readers saw at the time.
 - Thai and Lao have no sentence punctuation, so they are split approximately at spaces.
@@ -194,10 +204,10 @@ Code: Apache-2.0. The alignment scoring is adapted from the sentence-transformer
 - **修订历史**：列出每次修订的时间、编辑者、大小增减、摘要和标签，并标出用维基百科内容翻译工具完成的编辑。勾选两个版本即可直接比较。
 - **追溯首次出现**：对一个句对，在各自条目的修订历史中查找每句首次出现的修订并比较日期，作为判断翻译方向的线索。可选允许措辞的小改动。
 - **你自己的文本**：任一侧都可以粘贴文本，或打开 .txt、.md、.docx 文件。
-- **导出**：Excel（句对、两侧未对齐句、元数据）、CSV 或 JSON。元数据记录修订号、链接、模型、参数和 CC BY-SA 许可说明。
+- **导出**：支持 Excel、CSV 和 JSON。句组模式的 Excel 首页列出已接受的句组，另附逐句展开的连线和低置信候选（如有）。CSV 每个句组占一行，记录复核状态。Excel 和 JSON 记录修订号、链接、模型、参数和 CC BY-SA 许可说明。
 - **自动保存**：每次结果都保存在你的电脑上，再次打开无需重新计算。
 - **双语界面**：右上角可切换“中”“EN”“中/EN”。“中/EN”同时显示中英文，是默认模式。
-- **模型选择**：提供 9 个模型，分为 5 组。“设置”页可以对比，打开结果时会自动套用该模型的推荐阈值。
+- **模型选择**：提供 9 个模型，分为 5 组，可在“设置”页对比。逐句模式提供各模型的推荐显示阈值。
 
 ### 安装
 
@@ -307,7 +317,10 @@ wikialigner/
   segment.py    多语言分句与分句粒度
   models.py     模型列表、加载、向量缓存
   model_benchmark.json  本机评测结果
-  align.py      margin 打分（Artetxe & Schwenk 2019）与三种匹配策略
+  align.py      margin 打分（Artetxe & Schwenk 2019）与匹配入口
+  ordered.py    共享的句组向量工具与第一版按序算法
+  ordered_refined.py  按语序拆合句对齐和句组评分
+  span_mining.py  允许乱序和复用的句组候选（实验）
   pipeline.py   从两个来源得到一份对齐结果
   history.py    追溯首次出现（二分查找修订历史）
   export.py     Excel、CSV、JSON 导出
@@ -323,7 +336,8 @@ packaging/      安装包、安装脚本、冒烟测试
 ### 已知限制
 
 - 句对只是候选结果，需要人工判断。相似度高说明两句话意思相同，不能说明其中一句译自另一句。
-- 推荐阈值来自上面的新闻语料测试，没有用维基百科金标准校准。自定义模型没有评测数据，初始阈值为余弦 ≥ 0.70。
+- 逐句模式的模型推荐阈值来自上面的新闻语料测试，自定义模型在逐句模式下的初始阈值为余弦 ≥ 0.70。
+- 两种句组模式目前均为实验功能。有时会把本可分别对齐的相邻句子合成一组，阈值也有待用维基百科金标准校准。句组内可以逐句追溯首次出现。
 - “追溯首次出现”假设句子加入后一直保留；如果曾被删除又加回，结果是其中一次出现的时间。每次查找要读取 10–15 个历史版本，通常需要 30–60 秒。
 - 旧版本由维基百科用现在的模板重新渲染，可能与当时读者看到的页面略有差异。
 - 泰语和老挝语没有句末标点，只能按空格近似切分。

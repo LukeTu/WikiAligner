@@ -9,11 +9,18 @@ so that k never exceeds the number of available sentences.
 from __future__ import annotations
 
 import difflib
+from collections import defaultdict, deque
 from dataclasses import asdict, dataclass
 
 import numpy as np
 
-STRATEGIES = ("greedy", "mutual", "many")
+from .ordered import span_vectors
+from .ordered_refined import OrderedConfig, ordered_groups
+from .span_mining import SpanMiningConfig, span_candidates
+
+GROUP_STRATEGIES = ("ordered", "span")
+STRATEGIES = ("greedy", "mutual", "many", *GROUP_STRATEGIES)
+GROUP_CONFIGS = {"ordered": OrderedConfig(), "span": SpanMiningConfig()}
 
 
 @dataclass
@@ -29,6 +36,14 @@ class AlignParams:
 
 def normalize(text: str) -> str:
     return " ".join(text.split())
+
+
+def check_alignment_size(strategy: str, n1: int, n2: int) -> None:
+    config = GROUP_CONFIGS.get(strategy)
+    if config is not None and n1 * n2 > config.max_cells:
+        label = "In-order alignment" if strategy == "ordered" else "Span candidate search"
+        raise ValueError(f"{label}: texts are too long. Split them into chapters or sections "
+                         f"(maximum {config.max_cells:,} segment combinations).")
 
 
 def margin_matrix(e1: np.ndarray, e2: np.ndarray, k: int) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -55,6 +70,10 @@ def align_embeddings(e1: np.ndarray, e2: np.ndarray, params: AlignParams) -> lis
         raise ValueError(f"strategy must be one of {STRATEGIES}")
     if len(e1) == 0 or len(e2) == 0:
         return []
+    if params.strategy in GROUP_STRATEGIES:
+        matcher = ordered_groups if params.strategy == "ordered" else span_candidates
+        return [(i, j, g["cos"], g["margin"]) for g in matcher(e1, e2, k=params.k, min_margin=params.min_margin)
+                for i in g["src_ids"] for j in g["tgt_ids"]]
     cos, margin, cand = margin_matrix(e1, e2, params.k)
     scored = np.where(cand, margin, -np.inf)
     fwd_best = scored.argmax(axis=1)   # best target for each source
@@ -88,65 +107,126 @@ def best_counterparts(e1: np.ndarray, e2: np.ndarray, k: int) -> tuple[np.ndarra
     return f, margin[np.arange(len(e1)), f], b, margin[b, np.arange(len(e2))]
 
 
+def _unmatched_segments(indices, other_indices, matched, closest, margins, params):
+    unmatched = []
+    for pos, segment_id in enumerate(indices):
+        if segment_id in matched:
+            continue
+        if closest is None:
+            unmatched.append({"id": segment_id, "best": None, "margin": None, "reason": "no_candidate"})
+            continue
+        margin = float(margins[pos])
+        if params.strategy == "ordered":
+            reason = "order"
+        elif params.strategy == "span":
+            reason = "span"
+        else:
+            reason = "weak" if margin < params.min_margin else "taken"
+        unmatched.append({"id": segment_id, "best": other_indices[int(closest[pos])],
+                          "margin": round(margin, 4), "reason": reason})
+    return unmatched
+
+
 def align_documents(texts1: list[str], texts2: list[str], emb1: np.ndarray, emb2: np.ndarray,
                     alignable1: list[bool], alignable2: list[bool], params: AlignParams,
-                    same_language: bool = False) -> dict:
+                    same_language: bool = False, span_encoder=None) -> dict:
     """Align two segment lists. Returns pairs and, for every unmatched segment, why it is unmatched.
 
     ``emb1``/``emb2`` hold one row per segment in ``texts1``/``texts2``; rows of non-alignable
     segments are ignored.
     """
     pairs: list[dict] = []
-    taken1: set[int] = set()
-    taken2: set[int] = set()
+    groups, low_confidence_groups = [], []
+    idx1 = [i for i, ok in enumerate(alignable1) if ok]
+    idx2 = [j for j, ok in enumerate(alignable2) if ok]
+    check_alignment_size(params.strategy, len(idx1), len(idx2))
+    group_mode = params.strategy in GROUP_STRATEGIES
+    exact_first = params.exact_first and (same_language or not group_mode)
 
-    if params.exact_first:
-        positions: dict[str, list[int]] = {}
-        for j, t in enumerate(texts2):
-            if alignable2[j]:
-                positions.setdefault(normalize(t), []).append(j)
-        for i, t in enumerate(texts1):
-            if not alignable1[i]:
+    def add_group(group):
+        group_id = len(groups)
+        groups.append({**group, "id": group_id})
+        for i in group["src_ids"]:
+            for j in group["tgt_ids"]:
+                pairs.append({"src": i, "tgt": j, "cos": group["cos"], "margin": group["margin"],
+                              "kind": group["kind"], "group_id": group_id})
+
+    if exact_first and params.strategy != "ordered":
+        positions = defaultdict(deque)
+        for j in idx2:
+            positions[normalize(texts2[j])].append(j)
+        for i in idx1:
+            queue = positions.get(normalize(texts1[i]))
+            if not queue:
                 continue
-            queue = positions.get(normalize(t))
-            if queue:
-                j = queue.pop(0)
-                taken1.add(i)
-                taken2.add(j)
-                pairs.append({"src": i, "tgt": j, "cos": 1.0, "margin": None, "kind": "identical"})
+            j = queue.popleft()
+            equal_score = {"cos": 1.0, "margin": None, "kind": "identical"}
+            if group_mode:
+                add_group({**equal_score, "src_ids": [i], "tgt_ids": [j]})
+            else:
+                pairs.append({"src": i, "tgt": j, **equal_score})
+        exact_src = {p["src"] for p in pairs}
+        exact_tgt = {p["tgt"] for p in pairs}
+        idx1 = [i for i in idx1 if i not in exact_src]
+        idx2 = [j for j in idx2 if j not in exact_tgt]
 
-    idx1 = [i for i, ok in enumerate(alignable1) if ok and i not in taken1]
-    idx2 = [j for j, ok in enumerate(alignable2) if ok and j not in taken2]
     sub1, sub2 = emb1[idx1], emb2[idx2]
-    for a, b, c, m in align_embeddings(sub1, sub2, params):
-        i, j = idx1[a], idx2[b]
-        pairs.append({"src": i, "tgt": j, "cos": round(c, 4), "margin": round(m, 4), "kind": "match"})
-        taken1.add(i)
-        taken2.add(j)
+    if group_mode and len(sub1) and len(sub2):
+        left = [texts1[i] for i in idx1]
+        right = [texts2[j] for j in idx2]
+        config = GROUP_CONFIGS[params.strategy]
+        spans1 = span_vectors(sub1, left, span_encoder, max_span=config.max_span, indices=idx1)
+        spans2 = span_vectors(sub2, right, span_encoder, max_span=config.max_span, indices=idx2)
+        if params.strategy == "ordered":
+            exact_matches = None
+            if exact_first:
+                literal1 = np.asarray([normalize(text) for text in left], dtype=object)
+                literal2 = np.asarray([normalize(text) for text in right], dtype=object)
+                exact_matches = literal1[:, None] == literal2[None, :]
+            candidates = ordered_groups(sub1, sub2, k=params.k, min_margin=0.,
+                                        spans1=spans1, spans2=spans2, config=config,
+                                        review_threshold=params.min_margin, exact_matches=exact_matches)
+        else:
+            candidates = span_candidates(sub1, sub2, k=params.k, min_margin=params.min_margin,
+                                         spans1=spans1, spans2=spans2, config=config)
+        for g in candidates:
+            g = {**g, "src_ids": [idx1[i] for i in g["src_ids"]],
+                 "tgt_ids": [idx2[j] for j in g["tgt_ids"]]}
+            if g.get("above_threshold") is False:
+                low_confidence_groups.append({**g, "id": f"low-{len(low_confidence_groups)}",
+                                              "status": "below_threshold"})
+                continue
+            if same_language and len(g["src_ids"]) == len(g["tgt_ids"]) == 1:
+                if normalize(texts1[g["src_ids"][0]]) == normalize(texts2[g["tgt_ids"][0]]):
+                    g.update(kind="identical", cos=1., margin=None)
+            add_group(g)
+    elif not group_mode:
+        for a, b, c, m in align_embeddings(sub1, sub2, params):
+            i, j = idx1[a], idx2[b]
+            pairs.append({"src": i, "tgt": j, "cos": round(c, 4), "margin": round(m, 4), "kind": "match"})
 
     if same_language:
         for p in pairs:
+            if "group_id" in p:
+                group = groups[p["group_id"]]
+                if len(group["src_ids"]) != 1 or len(group["tgt_ids"]) != 1:
+                    continue
             p["char_ratio"] = round(difflib.SequenceMatcher(None, texts1[p["src"]], texts2[p["tgt"]]).ratio(), 3)
     pairs.sort(key=lambda p: (p["src"], p["tgt"]))
 
-    unmatched1, unmatched2 = [], []
+    matched1 = {p["src"] for p in pairs}
+    matched2 = {p["tgt"] for p in pairs}
     if len(sub1) and len(sub2):
         f, fm, b, bm = best_counterparts(sub1, sub2, params.k)
-        matched1 = {p["src"] for p in pairs}
-        matched2 = {p["tgt"] for p in pairs}
-        for a, i in enumerate(idx1):
-            if i not in matched1:
-                best = idx2[int(f[a])]
-                reason = "weak" if fm[a] < params.min_margin else "taken"
-                unmatched1.append({"id": i, "best": best, "margin": round(float(fm[a]), 4), "reason": reason})
-        for c, j in enumerate(idx2):
-            if j not in matched2:
-                best = idx1[int(b[c])]
-                reason = "weak" if bm[c] < params.min_margin else "taken"
-                unmatched2.append({"id": j, "best": best, "margin": round(float(bm[c]), 4), "reason": reason})
     else:
-        matched1 = {p["src"] for p in pairs}
-        matched2 = {p["tgt"] for p in pairs}
-        unmatched1 = [{"id": i, "best": None, "margin": None, "reason": "weak"} for i in idx1 if i not in matched1]
-        unmatched2 = [{"id": j, "best": None, "margin": None, "reason": "weak"} for j in idx2 if j not in matched2]
-    return {"pairs": pairs, "unmatched_src": unmatched1, "unmatched_tgt": unmatched2}
+        f = fm = b = bm = None
+    unmatched1 = _unmatched_segments(idx1, idx2, matched1, f, fm, params)
+    unmatched2 = _unmatched_segments(idx2, idx1, matched2, b, bm, params)
+    algorithm = {"name": params.strategy}
+    if params.strategy == "ordered":
+        algorithm.update(version="ordered-refined-v2", settings=asdict(GROUP_CONFIGS["ordered"]))
+    elif params.strategy == "span":
+        algorithm.update(version="span-candidates-v1", settings=asdict(GROUP_CONFIGS["span"]))
+    return {"pairs": pairs, "unmatched_src": unmatched1, "unmatched_tgt": unmatched2,
+            "groups": groups, "score_unit": "group" if group_mode else "sentence",
+            "alignment_algorithm": algorithm, "low_confidence_groups": low_confidence_groups}

@@ -1,13 +1,14 @@
 """From two source specifications to one alignment result."""
 from __future__ import annotations
 
+import math
 import time
 import uuid
 from dataclasses import asdict, dataclass, field
 from typing import Callable
 
 from . import __version__
-from .align import AlignParams, align_documents
+from .align import GROUP_STRATEGIES, STRATEGIES, AlignParams, align_documents, check_alignment_size
 from .extract import Block, blocks_from_plain_text, extract_blocks
 from .models import DEFAULT_MODEL, ModelManager, resolve_model_id
 from .segment import GRANULARITIES, Segment, segment_blocks
@@ -60,8 +61,12 @@ class AlignOptions:
         opts = cls(**{k: v for k, v in (d or {}).items() if k in known})
         if opts.granularity not in GRANULARITIES:
             raise ValueError(f"Unknown granularity {opts.granularity!r}")
+        if opts.strategy not in STRATEGIES:
+            raise ValueError(f"Unknown strategy {opts.strategy!r}")
         opts.k = max(1, min(int(opts.k), 16))
         opts.min_margin = float(opts.min_margin)
+        if not math.isfinite(opts.min_margin) or opts.min_margin < 0:
+            raise ValueError("Margin threshold must be a finite non-negative number")
         return opts
 
     def to_dict(self) -> dict:
@@ -133,8 +138,12 @@ def run_alignment(left: SourceSpec, right: SourceSpec, opts: AlignOptions, clien
     doc1 = load_document(left, client, opts)
     progress("fetch_right")
     doc2 = load_document(right, client, opts)
-    if not any(s.alignable for s in doc1.segments) or not any(s.alignable for s in doc2.segments):
+    alignable1 = [s.alignable for s in doc1.segments]
+    alignable2 = [s.alignable for s in doc2.segments]
+    n1, n2 = sum(alignable1), sum(alignable2)
+    if not n1 or not n2:
         raise WikiError("One of the two texts has no sentences to align")
+    check_alignment_size(opts.strategy, n1, n2)
 
     embedder = models.get(opts.model, progress)
     progress("embed")
@@ -146,15 +155,19 @@ def run_alignment(left: SourceSpec, right: SourceSpec, opts: AlignOptions, clien
     progress("align")
     same_language = doc1.lang == doc2.lang
     exact_first = opts.exact_first if opts.exact_first is not None else same_language
+    if not same_language and opts.strategy in GROUP_STRATEGIES:
+        exact_first = False
     params = AlignParams(k=opts.k, min_margin=opts.min_margin, strategy=opts.strategy, exact_first=exact_first)
-    result = align_documents(texts1, texts2, emb1, emb2,
-                             [s.alignable for s in doc1.segments], [s.alignable for s in doc2.segments],
-                             params, same_language=same_language)
+    result = align_documents(texts1, texts2, emb1, emb2, alignable1, alignable2,
+                             params, same_language=same_language, span_encoder=embedder.encode)
 
-    n1 = sum(s.alignable for s in doc1.segments)
-    n2 = sum(s.alignable for s in doc2.segments)
     m1 = len({p["src"] for p in result["pairs"]})
     m2 = len({p["tgt"] for p in result["pairs"]})
+    model_info = {"id": resolve_model_id(opts.model), "dim": embedder.dim}
+    runtime_model = getattr(embedder, "_model", None)
+    if runtime_model is not None:
+        model_info.update(device=embedder.device, weights_dtype=str(next(runtime_model.parameters()).dtype),
+                          max_sequence_length=runtime_model.max_seq_length, prompt=embedder.prompt)
     return {
         "id": uuid.uuid4().hex[:12],
         "created": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
@@ -163,10 +176,12 @@ def run_alignment(left: SourceSpec, right: SourceSpec, opts: AlignOptions, clien
         "left": doc1.to_dict(),
         "right": doc2.to_dict(),
         "options": {**opts.to_dict(), "exact_first": exact_first},
-        "model": {"id": resolve_model_id(opts.model), "dim": embedder.dim},
+        "model": model_info,
         **result,
         "stats": {
             "pairs": len(result["pairs"]),
+            "groups": len(result["groups"]),
+            "low_confidence_groups": len(result.get("low_confidence_groups", [])),
             "identical": sum(p["kind"] == "identical" for p in result["pairs"]),
             "alignable_src": n1,
             "alignable_tgt": n2,

@@ -329,10 +329,11 @@ function scoreOf(p) {
   if (p.kind === "identical") return Infinity;
   return $("#flt-score").value === "margin" ? (p.margin ?? 0) : p.cos;
 }
-function pairVisible(p) { return scoreOf(p) >= Number($("#flt-threshold").value); }
+function pairVisible(p) { return scoreOf(p) >= displayThreshold(); }
 function pairsFor(side, id) { return (side === "left" ? R.bySrc : R.byTgt).get(id) || []; }
 function docOf(side) { return side === "left" ? R.result.left : R.result.right; }
 const isRevisionMode = () => R.result?.mode === "revision";
+const isGroupMode = () => R.result?.score_unit === "group";
 
 function renderResult(result) {
   R.result = result;
@@ -356,25 +357,51 @@ function renderResult(result) {
 
 function setScoreMode(mode, keepValue) {
   const slider = $("#flt-threshold");
+  const previous = Number(slider.value);
   $("#flt-score").value = mode;
-  if (mode === "margin") { slider.min = 0.9; slider.max = 1.8; slider.step = 0.005; if (!keepValue || Number(slider.value) < 0.9) slider.value = 1.1; }
-  else { slider.min = 0; slider.max = 1; slider.step = 0.01; if (!keepValue || Number(slider.value) > 1) slider.value = 0.7; }
+  if (mode === "margin" && isGroupMode()) {
+    const initial = R.result.options.min_margin ?? 1.0;
+    const largest = R.result.groups.reduce((maximum, g) => Math.max(maximum, g.margin ?? 0), 2);
+    slider.min = Math.min(0.8, initial);
+    slider.max = Math.max(largest, initial);
+    slider.step = "any";
+    slider.value = keepValue ? previous : initial;
+  } else if (mode === "margin") {
+    slider.min = 0.9;
+    slider.max = 1.8;
+    slider.step = 0.005;
+    slider.value = keepValue && previous >= 0.9 ? previous : 1.1;
+  } else {
+    slider.min = 0;
+    slider.max = 1;
+    slider.step = 0.01;
+    slider.value = keepValue && previous <= 1 ? previous : 0.7;
+  }
   $("#flt-value").textContent = fmtThreshold();
 }
 
+function displayThreshold() {
+  const value = Number($("#flt-threshold").value);
+  // Saved group scores are rounded to four decimals.
+  return isGroupMode() && $("#flt-score").value === "margin" ? Number(value.toFixed(4)) : value;
+}
+
 function fmtThreshold() {
-  return Number($("#flt-threshold").value).toFixed($("#flt-score").value === "margin" ? 3 : 2);
+  const digits = $("#flt-score").value === "margin" ? (isGroupMode() ? 4 : 3) : 2;
+  return displayThreshold().toFixed(digits);
 }
 
 // Threshold the local benchmark recommends for the model behind the current result.
 function recommendedThreshold() {
+  if (isGroupMode()) return null;
   const m = MODELS.list.find((x) => x.model_id === R.result?.model.id);
   return m?.benchmark?.recommended_threshold ?? null;
 }
 
 function applyRecommendedThreshold() {
   const th = recommendedThreshold();
-  if (th == null) { setScoreMode("cos", false); }
+  if (isGroupMode()) { setScoreMode("margin", false); }
+  else if (th == null) { setScoreMode("cos", false); }
   else { setScoreMode("margin", true); $("#flt-threshold").value = th; }
   $("#flt-value").textContent = fmtThreshold();
 }
@@ -423,8 +450,10 @@ function applyFilter() {
   $("#flt-value").textContent = fmtThreshold();
   const onlyUnmatched = $("#flt-unmatched").checked, showIds = $("#flt-ids").checked;
   const scoreMode = $("#flt-score").value;
-  let visibleCount = 0;
-  R.result.pairs.forEach((p) => { if (pairVisible(p)) visibleCount++; });
+  const visiblePairs = R.result.pairs.filter(pairVisible);
+  const visibleCount = isGroupMode()
+    ? new Set(visiblePairs.map(p => p.group_id).filter(id => id != null)).size
+    : visiblePairs.length;
   for (const side of ["left", "right"]) {
     const doc = docOf(side);
     for (const span of $$(".seg-s", $(`#body-${side}`))) {
@@ -433,7 +462,8 @@ function applyFilter() {
       span.style.removeProperty("--a");
       span.querySelector(".sid")?.remove();
       if (!seg.alignable) continue;
-      const vis = pairsFor(side, id).filter(pairVisible);
+      const pairs = pairsFor(side, id);
+      const vis = pairs.filter(pairVisible);
       if (vis.length) {
         const best = vis.reduce((a, b) => (scoreOf(b) > scoreOf(a) ? b : a));
         if (isRevisionMode()) span.classList.add(best.kind === "identical" ? "identical" : "modified");
@@ -444,6 +474,8 @@ function applyFilter() {
         }
         if (onlyUnmatched) span.classList.add("dim");
         if (showIds) span.prepend(el("span", { class: "sid", text: vis.map((p) => (side === "left" ? p.tgt : p.src)).join(",") + "→" }));
+      } else if (pairs.length) {
+        span.classList.add("dim");
       } else {
         span.classList.add("unmatched");
       }
@@ -460,8 +492,10 @@ function renderStats(visibleCount) {
   const left = tv(isRevisionMode() ? "side.old" : "side.left"), right = tv(isRevisionMode() ? "side.new" : "side.right");
   $("#stats").replaceChildren(...[
     el("span", { class: "chip accent", text: t("mode." + r.mode) }),
-    el("span", { class: "chip", text: t("stat.pairs", { n: s.pairs }) }),
-    el("span", { class: "chip", text: t("stat.visible", { n: visibleCount }) }),
+    el("span", { class: "chip", text: isGroupMode() ? t("stat.groups", { n: s.groups }) : t("stat.pairs", { n: s.pairs }) }),
+    isGroupMode() ? el("span", { class: "chip", text: t("stat.links", { n: s.pairs }) }) : null,
+    el("span", { class: "chip", text: t(isGroupMode() ? "stat.visibleGroups" : "stat.visible", { n: visibleCount }) }),
+    (r.low_confidence_groups || []).length ? el("span", { class: "chip", text: t("stat.review", { n: r.low_confidence_groups.length }), title: t("stat.reviewHint") }) : null,
     isRevisionMode() ? el("span", { class: "chip", text: t("stat.identical", { n: s.identical }) }) : null,
     el("span", { class: "chip", text: t("stat.coverage", { side: left, p: pct(s.coverage_src) }) }),
     el("span", { class: "chip", text: t("stat.coverage", { side: right, p: pct(s.coverage_tgt) }) }),
@@ -474,7 +508,8 @@ function renderLegend() {
   const sw = (bg, label, extra = "") => el("span", {}, el("i", { style: `background:${bg};${extra}` }), label);
   $("#legend").replaceChildren(...(isRevisionMode()
     ? [sw("var(--identical)", t("legend.identical")), sw("var(--modified)", t("legend.modified")),
-       sw("var(--removed)", t("legend.removed")), sw("var(--added)", t("legend.added"))]
+       sw("var(--removed)", t(isGroupMode() ? "legend.olderUnmatched" : "legend.removed")),
+       sw("var(--added)", t(isGroupMode() ? "legend.newerUnmatched" : "legend.added"))]
     : [sw("rgba(var(--pair), .32)", t("legend.matched")),
        sw("transparent", t("legend.unmatched"), "border-bottom:2px dashed var(--unmatched-line);height:6px;border-radius:0")]));
 }
@@ -538,22 +573,46 @@ function sideBox(side, id, extra = []) {
     el("div", { text: seg.text }));
 }
 
+function scoreLabel(match, charRatio) {
+  if (match.kind === "identical") return t("d.identical");
+  const score = t("d.scores", { cos: match.cos.toFixed(3), margin: match.margin?.toFixed(4) ?? "—" });
+  return charRatio == null ? score : score + " · " + t("d.charRatio", { r: charRatio });
+}
+
+function groupView(group) {
+  return el("div", { class: "pair-view" },
+    el("div", { class: "side" }, ...group.src_ids.map(id => sideBox("left", id))),
+    el("div", { class: "side" }, ...group.tgt_ids.map(id => sideBox("right", id))));
+}
+
 function renderDrawer(side, id) {
   const drawer = $("#drawer"), r = R.result;
   const other = side === "left" ? "right" : "left";
-  const doc = docOf(side), otherDoc = docOf(other);
+  const otherDoc = docOf(other);
   const pairs = pairsFor(side, id);
   const visible = pairs.filter(pairVisible);
   const content = [];
   const close = el("button", { class: "ghost small", text: t("btn.close"), onclick: () => { drawer.hidden = true; $$(".seg-s.sel").forEach((s) => s.classList.remove("sel")); } });
+  let traceSelected = false;
 
   if (visible.length || pairs.length) {
-    content.push(el("div", { class: "drawer-head" }, el("h3", { text: t("d.pair") + (visible.length ? "" : ` — ${t("d.reason.threshold")}`) }), close));
+    const title = t(isGroupMode() ? "d.groupTitle" : "d.pair");
+    content.push(el("div", { class: "drawer-head" }, el("h3", { text: title + (visible.length ? "" : ` — ${t("d.reason.threshold")}`) }), close));
+    const shownGroups = new Set();
     for (const p of (visible.length ? visible : pairs)) {
-      const scores = p.kind === "identical" ? t("d.identical")
-        : t("d.scores", { cos: p.cos.toFixed(3), margin: (p.margin ?? 0).toFixed(3) });
-      const ratio = p.char_ratio != null && p.kind !== "identical" ? " · " + t("d.charRatio", { r: p.char_ratio }) : "";
-      content.push(el("div", { class: "muted", text: scores + ratio }));
+      const g = p.group_id != null ? r.groups?.find(group => group.id === p.group_id) : null;
+      if (g) {
+        if (shownGroups.has(g.id)) continue;
+        shownGroups.add(g.id);
+        const singleton = g.src_ids.length === 1 && g.tgt_ids.length === 1;
+        content.push(el("div", { class: "muted", text: t("d.group", { id: g.id, a: g.src_ids.length, b: g.tgt_ids.length }) }));
+        content.push(el("div", { class: "muted", text: scoreLabel(g, singleton ? p.char_ratio : null) }));
+        content.push(groupView(g));
+        if (singleton) content.push(traceActions(p.src, p.tgt));
+        else traceSelected = true;
+        continue;
+      }
+      content.push(el("div", { class: "muted", text: scoreLabel(p, p.char_ratio) }));
       content.push(el("div", { class: "pair-view" }, sideBox("left", p.src), sideBox("right", p.tgt)));
       content.push(traceActions(p.src, p.tgt));
     }
@@ -568,8 +627,15 @@ function renderDrawer(side, id) {
           el("button", { class: "link", text: "→", onclick: () => selectSegment(other, info.best) }))
       : el("div")));
     if (info) content.push(el("div", { class: "muted", text: t("d.reason." + info.reason) }));
-    content.push(traceActions(side === "left" ? id : null, side === "right" ? id : null));
+    traceSelected = true;
   }
+  const lowGroups = (r.low_confidence_groups || []).filter(g => (side === "left" ? g.src_ids : g.tgt_ids).includes(id));
+  for (const g of lowGroups) {
+    content.push(el("h4", { text: t("d.lowConfidenceGroup") }));
+    content.push(el("div", { class: "muted", text: scoreLabel(g) }));
+    content.push(groupView(g));
+  }
+  if (traceSelected) content.push(traceActions(side === "left" ? id : null, side === "right" ? id : null));
   drawer.replaceChildren(...content);
   drawer.hidden = false;
 }
@@ -587,9 +653,10 @@ function traceActions(srcId, tgtId) {
   if (srcId != null && tgtId != null && leftWiki && rightWiki) {
     box.append(el("button", { class: "primary small", text: t("btn.trace"),
       onclick: () => runTrace("/api/trace_pair", { left: req("left", srcId), right: req("right", tgtId) }, traceTarget) }));
-  } else {
-    const side = srcId != null ? "left" : "right", id = srcId ?? tgtId;
-    if (docOf(side).source === "wiki") box.append(el("button", { class: "primary small", text: t("btn.traceOne"),
+  } else if ((srcId != null && leftWiki) || (tgtId != null && rightWiki)) {
+    const side = srcId != null && leftWiki ? "left" : "right";
+    const id = side === "left" ? srcId : tgtId;
+    box.append(el("button", { class: "primary small", text: t("btn.traceOne"),
       onclick: () => runTrace("/api/trace", req(side, id), traceTarget, side) }));
   }
   if (box.children.length) box.append(el("label", { class: "check" }, fuzzy, t("btn.fuzzy")));
@@ -729,7 +796,8 @@ async function loadRuns() {
     el("td", { class: "time", text: fmtDate(r.created.replace(/([+-]\d{4})$/, "")) }),
     el("td", { text: label(r.left) }),
     el("td", { text: label(r.right) }),
-    el("td", { class: "num", text: String(r.stats.pairs) }),
+    el("td", { class: "num", text: r.score_unit === "group" || r.stats.groups || r.stats.low_confidence_groups
+      ? t("stat.groups", { n: r.stats.groups }) : t("stat.pairs", { n: r.stats.pairs }) }),
     el("td", {},
       el("button", { class: "ghost small", text: t("btn.open"), onclick: async () => renderResult(await api.get(`/api/runs/${r.id}`)) }), " ",
       el("button", { class: "ghost small", text: t("btn.delete"), onclick: async () => { await api.del(`/api/runs/${r.id}`); loadRuns(); } })))));

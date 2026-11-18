@@ -1,8 +1,11 @@
 """End-to-end API tests with a fake Wikipedia and a fake embedding model (no network)."""
+import csv
 import time
+from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
+from openpyxl import load_workbook
 
 from wikialigner.history import trace_first_appearance
 from wikialigner.jobs import RunStore
@@ -106,6 +109,23 @@ def test_revision_comparison_by_date(client):
     assert [u["id"] for u in r["unmatched_tgt"]] == [2]  # the sentence added in revision 3
 
 
+@pytest.mark.parametrize("strategy", ["ordered", "span"])
+def test_group_revision_keeps_exact_match_above_semantic_threshold(client, strategy):
+    revision = {"type": "wiki", "lang": "en", "revid": 1}
+    job = client.post("/api/align", json={
+        "left": revision, "right": revision,
+        "options": {"model": "fake", "strategy": strategy, "min_margin": 1.05},
+    }).json()
+    done = wait(client, job)
+    assert done["status"] == "done", done.get("error")
+    result = done["result"]
+    assert result["mode"] == "revision" and result["options"]["exact_first"]
+    assert result["stats"]["identical"] == 1
+    assert result["groups"][0]["kind"] == "identical"
+    assert result["groups"][0]["margin"] is None
+    assert result["unmatched_src"] == result["unmatched_tgt"] == result["low_confidence_groups"] == []
+
+
 def test_text_source(client):
     job = client.post("/api/align", json={
         "left": {"type": "text", "lang": "en", "text": "c1 First line\n\nc2 Second line", "name": "a.txt"},
@@ -155,8 +175,75 @@ def test_export_formats(client, tmp_path):
     for fmt in ("xlsx", "csv", "json"):
         path = client.post("/api/export", json={"run_id": run_id, "format": fmt}).json()["path"]
         assert path.endswith("." + fmt)
-        assert (tmp_path / "out").joinpath(path.split("/")[-1].split("\\")[-1]).exists()
+        assert Path(path).resolve().parent == (tmp_path / "out").resolve()
+        assert Path(path).is_file()
+        if fmt == "csv":
+            with Path(path).open(encoding="utf-8-sig", newline="") as file:
+                assert next(csv.reader(file)) == ["left_id", "left_section", "left_text", "right_id", "right_section",
+                                                   "right_text", "cosine", "margin", "char_ratio", "type"]
 
 
 def test_rejects_foreign_host_header(client):
     assert client.get("/api/health", headers={"Host": "evil.example"}).status_code == 400
+
+
+@pytest.mark.parametrize(("strategy", "version", "score_column"), [
+    ("ordered", "ordered-refined-v2", "alignment_score"),
+    ("span", "span-candidates-v1", "ranking_score"),
+])
+def test_group_api_and_export(client, tmp_path, strategy, version, score_column):
+    client.post("/api/settings", json={"export_dir": str(tmp_path / "out")})
+    job = client.post("/api/align", json={
+        "left": {"type": "text", "lang": "en", "text": "c1 First. c2 Second."},
+        "right": {"type": "text", "lang": "de", "text": "c1 Erste. c2 Zweite."},
+        "options": {"model": "fake", "strategy": strategy, "min_margin": 0.9},
+    }).json()
+    done = wait(client, job)
+    assert done["status"] == "done", done.get("error")
+    r = done["result"]
+    assert r["score_unit"] == "group" and r["groups"]
+    assert r["alignment_algorithm"]["version"] == version
+    assert all("group_id" in p for p in r["pairs"])
+    assert client.get("/api/runs").json()["runs"][0]["score_unit"] == "group"
+    assert client.get(f"/api/runs/{r['id']}").json()["groups"] == r["groups"]
+
+    path = client.post("/api/export", json={"run_id": r["id"], "format": "xlsx"}).json()["path"]
+    workbook = load_workbook(path)
+    assert workbook.sheetnames[0] == "Alignment groups"
+    columns = [cell.value for cell in workbook["Alignment groups"][1]]
+    assert workbook["Alignment groups"].cell(2, columns.index(score_column) + 1).value == r["groups"][0][score_column]
+    assert workbook["Alignment groups"].max_row == len(r["groups"]) + 1
+    links = workbook["Expanded links"]
+    assert {"group_id", "score_unit"} <= {cell.value for cell in links[1]}
+    assert links.max_row == len(r["pairs"]) + 1
+
+    path = client.post("/api/export", json={"run_id": r["id"], "format": "csv"}).json()["path"]
+    with Path(path).open(encoding="utf-8-sig", newline="") as file:
+        rows = list(csv.DictReader(file))
+    assert len(rows) == len(r["groups"]) + len(r["low_confidence_groups"])
+    assert rows[0]["status"] == "accepted"
+    assert float(rows[0][score_column]) == r["groups"][0][score_column]
+    assert client.post("/api/align", json={"left": {}, "right": {}, "options": {"strategy": "nope"}}).status_code == 400
+
+
+def test_low_confidence_groups_export_as_review_material(client, tmp_path):
+    client.post("/api/settings", json={"export_dir": str(tmp_path / "out")})
+    job = client.post("/api/align", json={
+        "left": {"type": "text", "lang": "en", "text": "c1 First. c2 Second."},
+        "right": {"type": "text", "lang": "de", "text": "c1 Erste. c2 Zweite."},
+        "options": {"model": "fake", "strategy": "ordered", "min_margin": 10.0},
+    }).json()
+    r = wait(client, job)["result"]
+    assert not r["pairs"] and not r["groups"] and r["low_confidence_groups"]
+    path = client.post("/api/export", json={"run_id": r["id"], "format": "xlsx"}).json()["path"]
+    workbook = load_workbook(path)
+    assert workbook["Alignment groups"].max_row == 1
+    review = workbook["Low confidence groups"]
+    status = [cell.value for cell in review[1]].index("status")
+    assert all(row[status] == "below_threshold" for row in review.iter_rows(min_row=2, values_only=True))
+
+    path = client.post("/api/export", json={"run_id": r["id"], "format": "csv"}).json()["path"]
+    with Path(path).open(encoding="utf-8-sig", newline="") as file:
+        rows = list(csv.DictReader(file))
+    assert len(rows) == len(r["low_confidence_groups"])
+    assert {row["status"] for row in rows} == {"below_threshold"}
