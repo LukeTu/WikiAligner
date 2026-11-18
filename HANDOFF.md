@@ -30,7 +30,7 @@ Run from the folder containing this file. `uv` manages Python 3.12 and all depen
 
 ## Step 3: Verify
 
-Run the smoke test. It starts the local server, aligns two short texts, aligns a real Wikipedia revision and exports to Excel. From source it downloads the default model (about 0.5 GB) on first use.
+Run the smoke test. It starts the local server, checks sentence and group alignment, aligns a real Wikipedia revision and exports to Excel. From source it downloads the default model (about 0.5 GB) on first use.
 
 ```bash
 uv run --no-dev python packaging/smoke_test.py uv run --no-dev -m wikialigner
@@ -79,4 +79,9 @@ uv run --no-dev --group build python packaging/fetch_model.py
 uv run --no-dev --group build pyinstaller packaging/wikialigner.spec --noconfirm
 ```
 
-Then run `bash packaging/make_dmg.sh` on macOS, or `iscc /DAppVersion=0.2.0 packaging\wikialigner.iss` on Windows.
+Then run `bash packaging/make_dmg.sh` on macOS. On Windows, use PowerShell with Inno Setup installed.
+
+```powershell
+$version = uv run --no-dev python -c "from wikialigner import __version__; print(__version__)"
+iscc "/DAppVersion=$version" packaging\wikialigner.iss
+```

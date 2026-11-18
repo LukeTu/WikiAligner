@@ -2,6 +2,16 @@ WikiAligner finds corresponding sentences across Wikipedia language editions and
 
 WikiAligner 在维基百科的不同语言版本之间、或同一条目的不同历史版本之间，找出彼此对应的句子。它在你自己的电脑上运行，不需要服务器。安装包已附带句向量模型，装好即可使用（仍需能访问维基百科）。
 
+## New in v0.3.0 / v0.3.0 更新
+
+- **Group alignment** adds two experimental modes for aligning splits and merges in sequence or finding reordered and reused spans. Both produce candidate groups for manual review.
+- **Revision comparison** preserves identical sentences even at strict thresholds. For Wikipedia revisions, you can trace first appearances from a pair or from individual sentences in a group.
+- **Exports** keep groups intact in Excel and CSV and label below-threshold candidates for review.
+
+- **句组对齐**新增两种实验模式，可按语序处理拆句和合句，也可寻找乱序或重复使用的片段。候选句组可供人工复核。
+- **修订对比**在高阈值下也能保留未改动的句子。对维基百科修订，可以从句对或句组中的单句追溯首次出现。
+- **导出**在 Excel 和 CSV 中保留完整句组，并标明低置信候选。
+
 ## Install / 安装
 
 **macOS (Apple silicon, M1 or later)**. Paste this into Terminal / 把下面这行粘贴到“终端”：

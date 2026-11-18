@@ -4,8 +4,8 @@
     python packaging/smoke_test.py "C:/.../WikiAligner.exe" --offline-model
     python packaging/smoke_test.py uv run --no-dev -m wikialigner
 
-Starts the app's local server, aligns two short texts with the default model, aligns a real
-Wikipedia revision and exports to Excel. ``--offline-model`` forbids Hugging Face access to
+Starts the app's local server, checks sentence and group alignment with the default model,
+aligns a real Wikipedia revision and exports to Excel. ``--offline-model`` forbids Hugging Face access to
 prove the bundled model is used. Exits non-zero and prints the app log on failure.
 """
 from __future__ import annotations
@@ -19,6 +19,7 @@ import tempfile
 import time
 import urllib.request
 from pathlib import Path
+from zipfile import ZipFile
 
 
 def call(base: str, path: str, body: dict | None = None, timeout: float = 30):
@@ -82,6 +83,19 @@ def main(argv: list[str]) -> int:
         print("text alignment:", pairs, "| model:", result["model"]["id"], "| seconds:", result["stats"]["seconds"], flush=True)
         assert pairs == {(0, 1), (1, 0)}, "wrong pairs for the text alignment"
 
+        call(base, "/api/settings", {"export_dir": str(data_dir / "out")})
+        revision = {"type": "text", "lang": "en", "text": "The bridge is closed for repairs. The library will reopen on Monday."}
+        for strategy in ("ordered", "span"):
+            grouped = wait_job(base, call(base, "/api/align", {
+                "left": revision, "right": revision, "options": {"strategy": strategy, "min_margin": 1.05},
+            }), 900)
+            assert grouped["score_unit"] == "group", f"{strategy}: missing group scores"
+            assert len(grouped["groups"]) == grouped["stats"]["identical"] == 2, f"{strategy}: lost identical sentences"
+            path = call(base, "/api/export", {"run_id": grouped["id"], "format": "xlsx"})["path"]
+            with ZipFile(path) as book:
+                assert b"Alignment groups" in book.read("xl/workbook.xml"), f"{strategy}: missing group worksheet"
+            print(f"{strategy} alignment: two identical groups and Excel export", flush=True)
+
         wiki = wait_job(base, call(base, "/api/align", {
             "left": {"type": "wiki", "lang": "en", "title": "Assassination of Boris Nemtsov", "date": "2015-03-10"},
             "right": {"type": "wiki", "lang": "ru", "title": "Убийство Бориса Немцова", "date": "2015-03-10"},
@@ -89,7 +103,6 @@ def main(argv: list[str]) -> int:
         print("wikipedia alignment:", wiki["stats"], flush=True)
         assert wiki["stats"]["pairs"] > 20, "too few pairs for the Wikipedia alignment"
 
-        call(base, "/api/settings", {"export_dir": str(data_dir / "out")})
         path = call(base, "/api/export", {"run_id": wiki["id"], "format": "xlsx"})["path"]
         assert Path(path).stat().st_size > 1000, "empty export"
         print("export:", path, flush=True)

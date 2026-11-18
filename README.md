@@ -6,11 +6,11 @@ Find corresponding sentences across Wikipedia language editions, or across two r
 
 **[Download the latest release / 下载最新版本](https://github.com/LukeTu/WikiAligner/releases/latest)** · [English](#english) · [中文](#中文)
 
-**New in the source / 源码更新**
+**New in v0.3.0 / v0.3.0 更新**
 
-Two experimental group modes handle splits and merges in sequence, or find reordered and reused spans. The current installers are v0.2.1. To try the new modes, [run from source](#run-from-source).
+Two experimental group modes handle splits and merges in sequence, or find reordered and reused spans. Results include group-level exports and first-appearance tracing for individual sentences.
 
-新增两种实验模式，可按语序对齐拆合句，也可寻找乱序或重复使用的片段。当前安装包为 v0.2.1，可[从源码运行](#从源码运行)体验新模式。
+新增两种实验模式，可按语序对齐拆合句，也可寻找乱序或重复使用的片段。结果支持按句组导出和逐句追溯首次出现。
 
 ## Paper / 论文
 
